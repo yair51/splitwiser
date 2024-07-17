@@ -10,7 +10,7 @@ views = Blueprint('views', __name__)
 @views.route('/')
 @login_required
 def dashboard():
-    # user_groups = current_user.groups
+    user_groups = current_user.groups
     return render_template('dashboard.html') 
 
 
