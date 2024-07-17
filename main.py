@@ -1,8 +1,13 @@
-from app import app, db  # Import the Flask app instance and the database
+from app import app, db
+from app.views import views
+from app.auth import auth
 
-# Optional: Create database tables if they don't exist
-# with app.app_context():
-#     db.create_all()
+# Register blueprints
+app.register_blueprint(views, url_prefix='/')  # Register the views blueprint
+app.register_blueprint(auth, url_prefix='/')  # Register the auth blueprint
+
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)

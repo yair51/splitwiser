@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
+
+    {% if groups %}
+        <h2>Your Groups</h2>
+        <ul class="list-group">
+            {% for group in groups %}
+                <li class="list-group-item">
+                    <a href="{{ url_for('views.group_details', group_id=group.id) }}">
+                        {{ group.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You haven't joined any groups yet.</p>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">Create a New Group</a>
+    </div>
+</div>
+{% endblock %}

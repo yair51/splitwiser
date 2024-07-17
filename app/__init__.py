@@ -4,8 +4,9 @@ from flask_login import LoginManager
 from dotenv import load_dotenv
 from app.config import Config, ProductionConfig, StagingConfig, DevelopmentConfig  # Replace with the actual path
 import os
+from flask_migrate import Migrate
+# from app.models import User
 
-# load_dotenv()
 
 app = Flask(__name__)
 
@@ -22,7 +23,12 @@ app.config.from_object(config_class)  # Load the appropriate config class
 # app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI') # Your PostgreSQL connection URI
 # app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+migrate = Migrate(app, db)  # Initialize Migrate
 
-from app import views, models  # Import routes and models after app is created
+login_manager = LoginManager(app)
+login_manager.login_view = 'auth.login'
+
+
+from app import views, models, auth  # Import routes and models after app is created
+
+

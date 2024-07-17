@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Create Group{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center mb-4">Create New Group</h2>
+            <form method="POST" action="{{ url_for('views.create_group') }}"> 
+                <div class="mb-3">
+                    <label for="group_name" class="form-label">Group Name</label>
+                    <input type="text" class="form-control" id="group_name" name="group_name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="group_description" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="group_description" name="group_description" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Group</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
