@@ -138,3 +138,15 @@ def join_group(token):
     # ... then add the user to the group
     return redirect(url_for('views.group_details', group_id=group.id))
 # ... (other routes for group creation, expense adding, etc.)
+
+@views.route('/api/leave_group/<int:group_id>', methods=['POST'])
+@login_required
+def leave_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user in group.members:
+        group.members.remove(current_user)
+        db.session.commit()
+        flash('You have left the group.', 'success')
+        return 'Success', 200
+    else:
+        abort(403)  # Forbidden - not a member of the group
