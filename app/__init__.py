@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from app.config import Config, ProductionConfig, StagingConfig, DevelopmentConfig  # Replace with the actual path
 import os
 from flask_migrate import Migrate
+from flask_mail import Mail
+import ssl
 # from app.models import User
 
 
@@ -24,6 +26,8 @@ app.config.from_object(config_class)  # Load the appropriate config class
 # app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # Initialize Migrate
+mail = Mail(app)
+
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'auth.login'

@@ -44,6 +44,16 @@ class Expense(db.Model):
 
     def __repr__(self):
         return f'<Expense {self.description}: {self.amount}>'
+    
+
+
+class Invitation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
+    token = db.Column(db.String(32), unique=True, nullable=False)  # Unique token for the invitation
+    # ... other fields you might want (e.g., created_at, status)
+
 
 # Additional models you might consider:
 # class Debt(db.Model):   # To track debts between users in a group 

@@ -10,6 +10,12 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your_default_secret_key'  # Replace with a strong secret key
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # Disable Flask-SQLAlchemy event system
     FLASK_ENV = os.getenv('FLASK_ENV')
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+    MAIL_SERVER = os.getenv('MAIL_SERVER')
+    MAIL_PORT = int(os.getenv('MAIL_PORT'))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS')
+    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL')
 
 
 

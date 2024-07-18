@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Invite to {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center mb-4">Invite to {{ group.name }}</h2>
+            <form method="POST" action="{{ url_for('views.invite_to_group', group_id=group.id) }}">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Invitation</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

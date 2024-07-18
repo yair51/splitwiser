@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ group.name }}</h1>
+    <p>{{ group.description }}</p>
+
+    <div class="mb-3">
+        <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-primary">
+            Add Expense
+        </a>
+    </div>
+
+    <h2>Expenses</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Paid By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense.description }}</td>
+                    <td>${{ expense.amount }}</td>
+                    <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ expense.paid_by.first_name }} {{ expense.paid_by.last_name }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Balances</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in group.members %}
+                {% if member.id in balances %}
+                    <tr>
+                        <td>{{ member.first_name }} {{ member.last_name }}</td>
+                        <td>${{ balances[member.id] }}</td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock %}
