@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, session
 from flask_login import login_required, current_user
 from flask_mail import Message
-from .models import Group, Expense, Invitation
+from .models import Group, Expense, Invitation, User
+from app.helpers import send_email
 from . import db, mail
 import datetime
 import secrets
@@ -121,9 +122,17 @@ def invite_to_group(group_id):
         db.session.add(invitation)
         db.session.commit()
 
-        msg = Message('Splitwiser Group Invitation', recipients=[email])
-        msg.body = render_template('email/invitation.html', group=group, token=token)
-        mail.send(msg)
+        send_email(
+        'Splitwiser Group Invitation', 
+        [email], 
+        'email/invitation.html', 
+        group=group, 
+        token=token
+    )
+            # print(e.message)
+        # msg = Message('Splitwiser Group Invitation', recipients=[email])
+        # msg.body = render_template('email/invitation.html', group=group, token=token)
+        # mail.send(msg)
 
         flash('Invitation sent successfully!', 'success')
         return redirect(url_for('views.group_details', group_id=group_id))
@@ -132,12 +141,33 @@ def invite_to_group(group_id):
 
 @views.route('/join/<token>')
 def join_group(token):
+    # Get the invitation and group
     invitation = Invitation.query.filter_by(token=token).first_or_404()
     group = invitation.group
-    # ... Logic to either log in or create account (if not logged in)
-    # ... then add the user to the group
-    return redirect(url_for('views.group_details', group_id=group.id))
-# ... (other routes for group creation, expense adding, etc.)
+
+    # Handle Logged-In User
+    if current_user.is_authenticated:
+        # Check if user is already in the group
+        if current_user in group.members:
+            flash(f'You are already a member of {group.name}.', 'info')
+        else:
+            group.members.append(current_user)
+            db.session.delete(invitation)  # Delete the used invitation
+            db.session.commit()
+            flash(f'You have successfully joined {group.name}!', 'success')
+        return redirect(url_for('views.group_details', group_id=group.id))
+
+    # Handle Non-Logged-In User
+    user = User.query.filter_by(email=invitation.email).first()
+    if user:  # Email already registered
+        flash('Please log in to join the group.', 'info')
+        return redirect(url_for('auth.login'))
+    else:  # Email not registered
+       # Store the token in the session to be used after registration
+        session['invitation_token'] = token  
+        flash('Please create an account to join the group.', 'info')
+        return redirect(url_for('auth.register'))
+
 
 @views.route('/api/leave_group/<int:group_id>', methods=['POST'])
 @login_required

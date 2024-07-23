@@ -51,8 +51,8 @@ class Invitation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
-    token = db.Column(db.String(32), unique=True, nullable=False)  # Unique token for the invitation
-    # ... other fields you might want (e.g., created_at, status)
+    token = db.Column(db.String(32), unique=True, nullable=False)
+    group = db.relationship('Group', backref='invitations', lazy=True) # Add this relationship
 
 
 # Additional models you might consider:

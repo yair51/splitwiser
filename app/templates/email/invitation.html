@@ -1,8 +1,11 @@
-Hello,
-
-You have been invited to join {{ group.name }} on Splitwiser. 
-
-Click on this link to join the group: {{ url_for('views.join_group', token=token, _external=True) }}
-
-Best,
-The Splitwiser Team
+<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+    <p>Hello,</p>
+    <p>You have been invited to join {{ group.name }} on Splitwiser.</p>
+    <p>Click on this link to join the group: <a href="{{ url_for('views.join_group', token=token, _external=True) }}">{{ url_for('views.join_group', token=token, _external=True) }}</a></p>
+    <p>Best,</p>
+    <p>The Splitwiser Team</p>
+</body>
+</html>
