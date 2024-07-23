@@ -1,11 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, session, jsonify
 from flask_login import login_required, current_user
 from flask_mail import Message
-from .models import Group, Expense, Invitation, User
+from .models import Group, Expense, Invitation, User, RecurrenceFrequency
 from app.helpers import send_email
 from . import db, mail
 import datetime
 import secrets
+
 
 views = Blueprint('views', __name__)
 
@@ -84,6 +85,9 @@ def add_expense(group_id):
         description = request.form['description']
         amount = float(request.form['amount'])
         paid_by_id = current_user.id  # The currently logged-in user paid the expense
+        is_recurring = request.form.get('is_recurring') == 'on'  # Convert to boolean
+        recurrence_frequency = RecurrenceFrequency(request.form.get('recurrence_frequency')) if is_recurring else None
+
 
         # Basic input validation (you can add more as needed)
         if not description or amount <= 0:
@@ -95,7 +99,9 @@ def add_expense(group_id):
             amount=amount,
             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
             group_id=group_id,
-            paid_by_id=paid_by_id
+            paid_by_id=paid_by_id,
+            is_recurring=is_recurring,
+            recurrence_frequency=recurrence_frequency
         )
         db.session.add(new_expense)
         db.session.commit()
@@ -180,3 +186,26 @@ def leave_group(group_id):
         return 'Success', 200
     else:
         abort(403)  # Forbidden - not a member of the group
+
+@views.route('/api/group/<int:group_id>/expenses')
+@login_required
+def get_expenses(group_id):
+   group = Group.query.get_or_404(group_id)
+   if current_user not in group.members:
+       abort(403)
+  
+   expenses = Expense.query.filter_by(group_id=group_id).all()
+  
+   # Convert expenses to dictionaries for JSON serialization
+   expense_list = [
+       {
+           'description': expense.description,
+           'amount': expense.amount,
+           'date': expense.date.strftime('%Y-%m-%d'),
+           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
+           'is_recurring': expense.is_recurring,
+           'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
+       } for expense in expenses
+   ]
+  
+   return jsonify(expense_list)

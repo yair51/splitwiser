@@ -1,105 +1,185 @@
 {% extends "base.html" %}
-
 {% block title %}{{ group.name }}{% endblock %}
 
+
 {% block content %}
+<div class="container mt-4">
+ <h1>{{ group.name }}</h1>
+ <p>{{ group.description }}</p>
 
-<div class="container">
-    <h1>{{ group.name }}</h1>
-    <p>{{ group.description }}</p>
 
-    <div class="mb-3 d-flex justify-content-between">
-        <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-primary">
-            Add Expense
-        </a>
-        <div id="leaveGroupContainer">
-            <button class="btn btn-danger" id="leaveGroupBtn" onclick="confirmLeaveGroup({{ group.id }})">Leave Group</button> 
-            <div id="leaveConfirmation" class="modal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Confirm Leave Group</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Are you sure you want to leave this group?</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
-                            <button type="button" class="btn btn-success" onclick="leaveGroup({{ group.id }})">Yes</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+ <div class="mb-3 d-flex justify-content-between align-items-start">
+   <div></div>
+   <div id="balanceBox" class="alert" role="alert">
+     Balance: $<span id="balanceAmount">0.00</span>
+   </div>
+ </div>
 
-    <h2>Expenses</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Paid By</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for expense in expenses %}
-                <tr>
-                    <td>{{ expense.description }}</td>
-                    <td>${{ expense.amount }}</td>
-                    <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ expense.paid_by.first_name }} {{ expense.paid_by.last_name }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
 
-    <h2>Balances</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Member</th>
-                <th>Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for member in group.members %}
-                {% if member.id in balances %}
-                    <tr>
-                        <td>{{ member.first_name }} {{ member.last_name }}</td>
-                        <td>${{ balances[member.id] }}</td>
-                    </tr>
-                {% endif %}
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+ <div class="row">
+   <div class="col-md-12">
+     <h2>Expenses</h2>
+     <table class="table">
+       <thead>
+         <tr>
+           <th>Description</th>
+           <th>Amount</th>
+           <th>Paid By</th>
+           <th>Date</th>
+         </tr>
+       </thead>
+       <tbody id="expenseTable"></tbody>
+     </table>
+   </div>
+
+
+
+
+ <div class="mt-5 d-flex justify-content-between">
+   <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-primary">
+     Add Expense
+   </a>
+
+
+   <div id="leaveGroupContainer">
+       <button class="btn btn-danger" id="leaveGroupBtn" onclick="confirmLeaveGroup()">Leave Group</button>
+       <div id="leaveConfirmation" class="modal" tabindex="-1">
+         <div class="modal-dialog">
+           <div class="modal-content">
+             <div class="modal-header">
+               <h5 class="modal-title">Confirm Leave Group</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+             </div>
+             <div class="modal-body">
+               <p>Are you sure you want to leave this group?</p>
+             </div>
+             <div class="modal-footer">
+               <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+               <button type="button" class="btn btn-success" onclick="leaveGroup({{ group.id }})">Yes</button>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+ </div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Existing JavaScript for expenses, payments etc.
+   // Global variables (ensure they are defined in your Flask context)
+   const currentGroupId = {{ group.id }};
+   const currentUserName = "{{ current_user.first_name }} {{ current_user.last_name }}";
+    // Wait for the DOM to be fully loaded
+   document.addEventListener("DOMContentLoaded", () => {
+     // Fetch and display expenses
+     fetch(`/api/group/${currentGroupId}/expenses`)
+       .then((response) => {
+         if (!response.ok) {
+           throw new Error("Network response was not ok.");
+         }
+         return response.json();
+       })
+       .then((expenses) => {
+         const expenseTable = document.getElementById("expenseTable");
+         const balanceAmount = document.getElementById("balanceAmount");
+         expenseTable.innerHTML = "";
+         let balance = 0;
+          // Loop through expenses and create elements for each
+         for (const expense of expenses) {
+           const row = document.createElement("tr");
+          
+           // Update the balance for the user
+           if (expense.paid_by === currentUserName) {
+             balance += expense.amount;
+           } else {
+             balance -= expense.amount / groupMemberCount; // Assuming you have groupMemberCount defined somewhere
+           }
+           
+          
+           // Create cell elements
+           const descriptionCell = document.createElement('td');
+           descriptionCell.textContent = expense.description;
+          
+           const amountCell = document.createElement('td');
+           if (expense.paid_by === currentUserName) {
+          // Create badge for money
+          const badge = document.createElement('span');
+          badge.classList.add("badge", "bg-success"); // Bootstrap badge class and success (green) color
+          badge.textContent = '$' + expense.amount.toFixed(2);
+          amountCell.appendChild(badge);
+           } else {
+          const badge = document.createElement('span');
+          badge.classList.add('badge', 'bg-danger'); // Bootstrap badge class and danger color (red)
+          badge.textContent = '$' + expense.amount.toFixed(2);
+          amountCell.appendChild(badge);
+           }
 
-    function confirmLeaveGroup(groupId) {
-        const leaveModal = new bootstrap.Modal(document.getElementById('leaveConfirmation'));
-        leaveModal.show();
-    }
 
-    function hideLeaveConfirmation() {
-        document.getElementById('leaveConfirmation').style.display = 'none';
-    }
-
-    function leaveGroup(groupId) {
-        fetch(`/api/leave_group/${groupId}`, {
-            method: 'POST'
-        })
-        .then(response => {
-            if (response.ok) {
-                window.location.href = '{{ url_for("views.dashboard") }}'; 
+            const dateFrequencyCell = document.createElement('td');
+            if (expense.is_recurring) {
+                const badge = document.createElement('span');
+                badge.classList.add("badge", "bg-warning"); // Bootstrap badge class and warning (orange) color
+                badge.textContent = expense.recurrence_frequency;
+                dateFrequencyCell.appendChild(badge);
             } else {
-                alert('Error leaving group.'); 
+                dateFrequencyCell.textContent = expense.date;
             }
-        });
-    }
-</script>
 
+
+           const paidByCell = document.createElement('td');
+           paidByCell.textContent = expense.paid_by;
+          
+           // Add cells to row and append to table.
+           row.appendChild(descriptionCell);
+           row.appendChild(amountCell);
+           row.appendChild(paidByCell);
+           row.appendChild(dateFrequencyCell);
+          
+           expenseTable.appendChild(row);
+          
+          }
+          // Update balance box
+         balanceAmount.textContent = balance.toFixed(2);
+         balanceBox.classList.remove("alert-success", "alert-danger");
+         if (balance > 0) {
+           balanceBox.classList.add("alert-success"); // Owed money
+         } else if (balance < 0) {
+           balanceBox.classList.add("alert-danger"); // Owes money
+         }
+       })
+       .catch((error) => {
+         console.error("Error fetching expenses:", error);
+         // Handle the error (e.g., display an error message to the user)
+       });
+   });
+    // functions for confirmation
+   function confirmLeaveGroup() {
+     const leaveModal = new bootstrap.Modal(
+       document.getElementById("leaveConfirmation")
+     );
+     leaveModal.show();
+      // Add event listener to the Yes button
+     document
+       .querySelector("#leaveConfirmation .btn-success")
+       .addEventListener("click", function () {
+         leaveGroup(currentGroupId); // Now you have access to groupId inside this function
+       });
+   }
+    function hideLeaveConfirmation() {
+     document.getElementById("leaveConfirmation").style.display = "none";
+   }
+    function leaveGroup(groupId) {
+     fetch(`/api/leave_group/${groupId}`, {
+       method: "POST",
+     })
+       .then((response) => {
+         if (response.ok) {
+           window.location.href = "{{ url_for('views.dashboard') }}";
+         } else {
+           alert("Error leaving group.");
+         }
+       });
+   }
+ </script>
+</body>
+</html>
 {% endblock %}
