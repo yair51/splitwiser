@@ -3,25 +3,55 @@
 
 {% block content %}
 <div class="container">
-    <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
+  <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
 
-    {% if groups %}
-        <h2>Your Groups</h2>
-        <ul class="list-group">
-            {% for group in groups %}
-                <li class="list-group-item">
-                    <a href="{{ url_for('views.group_details', group_id=group.id) }}">
-                        {{ group.name }}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>You haven't joined any groups yet.</p>
-    {% endif %}
+  {% if groups %}
+  <h2>Your Groups</h2>
+  <table class="table table-dark table-bordered table-hover">
+    <thead>
+      <tr>
+        <th>Group Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in groups %}
+      <tr
+        class="clickable-row"
+        data-href="{{ url_for('views.group_details', group_id=group.id) }}"
+      >
+        <td>
+          {{ group.name }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>You haven't joined any groups yet.</p>
+  {% endif %}
 
-    <div class="mt-4">
-        <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">Create a New Group</a>
-    </div>
+  <div class="mt-4">
+    <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">
+      Create a New Group
+    </a>
+  </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", (event) => {
+    const rows = document.querySelectorAll(".clickable-row");
+    rows.forEach((row) => {
+      row.addEventListener("click", () => {
+        window.location.href = row.dataset.href;
+      });
+    });
+  });
+</script>
+
+<style>
+    /* Style for hover effect on clickable rows */
+    .clickable-row:hover {
+      cursor: pointer; /* Change cursor to pointer on hover */
+    }
+  </style>
 {% endblock %}
