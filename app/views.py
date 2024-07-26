@@ -209,3 +209,26 @@ def get_expenses(group_id):
    ]
   
    return jsonify(expense_list)
+
+@views.route('/settings', methods=['GET', 'POST'])
+@login_required
+def update_settings():
+    if request.method == 'POST':
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        email = request.form.get('email')
+        dark_mode = request.form.get('dark_mode') == 'on'  # Convert to boolean
+
+        # Validate input data
+
+        current_user.first_name = first_name
+        current_user.last_name = last_name
+        current_user.email = email
+        current_user.dark_mode = dark_mode
+        db.session.commit()
+
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('views.update_settings'))
+
+    return render_template('settings.html')
+

@@ -23,6 +23,7 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(250), nullable=False)
     groups = db.relationship('Group', secondary=user_group, backref=db.backref('members', lazy=True))
+    dark_mode = db.Column(db.Boolean, default=False) 
 
     def __repr__(self):
         return f'<User {self.email}>'

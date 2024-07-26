@@ -1,13 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-
+<style>
+    /* Default (Light Mode) Table Styling */
+    .table[data-bs-theme="light"] {
+      background-color: #fff; /* White background */
+      color: #212529; /* Dark text color */
+    }
+  
+    /* Dark Mode Table Styling */
+    .table[data-bs-theme="dark"] {
+      background-color: #343a40; /* Dark gray background */
+      color: #f8f9fa; /* Light text color */
+    }
+  
+    /* Style for table borders (adjust as needed) */
+    .table-bordered th,
+    .table-bordered td {
+      border-color: #dee2e6; /* Light gray border in light mode */
+    }
+  
+    body[data-theme="dark"] .table-bordered th,
+    body[data-theme="dark"] .table-bordered td {
+      border-color: #495057; /* Darker gray border in dark mode */
+    }
+  </style>
 {% block content %}
 <div class="container">
   <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
 
   {% if groups %}
   <h2>Your Groups</h2>
-  <table class="table table-dark table-bordered table-hover">
+  <table class="table table-bordered table-hover" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
     <thead>
       <tr>
         <th>Group Name</th>
