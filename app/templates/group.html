@@ -12,6 +12,33 @@
   background-color: #fff3cd; /* Lighter orange for light mode */
   color: #856404; /* Darker text for light mode */
 }
+/* Light Mode Modal Styling */
+.modal[data-bs-theme="light"] .modal-content {
+  background-color: #fff;
+  color: #212529;
+}
+.modal[data-bs-theme="light"] .modal-header,
+.modal[data-bs-theme="light"] .modal-footer {
+  border-color: #dee2e6;
+}
+/* ... Add specific styles for the leave group modal elements ... */
+
+/* Dark Mode Modal Styling */
+.modal[data-bs-theme="dark"] .modal-content {
+  background-color: #343a40;
+  color: #fff;
+}
+.modal[data-bs-theme="dark"] .modal-header,
+.modal[data-bs-theme="dark"] .modal-footer {
+  border-color: #454d55;
+}
+.modal-dialog {
+    max-width: 20%; /* 1/5 of the screen width */
+  }
+  .member-list {
+    max-height: 300px; /* Adjust as needed */
+    overflow-y: auto;
+  }
 </style>
 {% block content %}
 <div class="container mt-4">
@@ -24,12 +51,30 @@
       <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" class="btn btn-primary">
          Invite Members
        </a>
+       <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#memberListModal">
+        Current Group Members
+      </button>
    </div>
    <div id="balanceBox" class="alert" role="alert">
      Balance: $<span id="balanceAmount">0.00</span>
    </div>
  </div>
 
+ <div class="modal fade" id="memberListModal" tabindex="-1" aria-labelledby="memberListModalLabel" aria-hidden="true" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="memberListModalLabel">Group Members</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body member-list"> 
+          {% for member in group.members %}
+            <div class="member-list-item">{{ member.first_name }} {{ member.last_name }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
 
  <div class="row">
   <div class="col-md-12">
@@ -59,25 +104,25 @@
 
 
    <div id="leaveGroupContainer">
-       <button class="btn btn-danger" id="leaveGroupBtn" onclick="confirmLeaveGroup()">Leave Group</button>
-       <div id="leaveConfirmation" class="modal" tabindex="-1">
-         <div class="modal-dialog">
-           <div class="modal-content">
-             <div class="modal-header">
-               <h5 class="modal-title">Confirm Leave Group</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-             </div>
-             <div class="modal-body">
-               <p>Are you sure you want to leave this group?</p>
-             </div>
-             <div class="modal-footer">
-               <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
-               <button type="button" class="btn btn-success" onclick="leaveGroup({{ group.id }})">Yes</button>
-             </div>
-           </div>
-         </div>
-       </div>
-     </div>
- </div>
+    <button class="btn btn-danger" id="leaveGroupBtn" onclick="confirmLeaveGroup()">Leave Group</button>
+    <div id="leaveConfirmation" class="modal" tabindex="-1" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Leave Group</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to leave this group?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+            <button type="button" class="btn btn-success"onclick="leaveGroup({{ group.id }})">Yes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -105,10 +150,11 @@
            const row = document.createElement("tr");
           
            // Update the balance for the user
+           expensePercentage =1;
            if (expense.paid_by === currentUserName) {
              balance += expense.amount;
            } else {
-             balance -= expense.amount / groupMemberCount; // Assuming you have groupMemberCount defined somewhere
+             balance -= expense.amount / expensePercentage; // TODO: create expensePercentage for each expense and user
            }
            
           
