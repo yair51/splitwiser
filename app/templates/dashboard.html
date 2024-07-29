@@ -1,27 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-
+<style>
+    /* Default (Light Mode) Table Styling */
+    .table[data-bs-theme="light"] {
+      background-color: #fff; /* White background */
+      color: #212529; /* Dark text color */
+    }
+  
+    /* Dark Mode Table Styling */
+    .table[data-bs-theme="dark"] {
+      background-color: #343a40; /* Dark gray background */
+      color: #f8f9fa; /* Light text color */
+    }
+  
+    /* Style for table borders (adjust as needed) */
+    .table-bordered th,
+    .table-bordered td {
+      border-color: #dee2e6; /* Light gray border in light mode */
+    }
+  
+    body[data-theme="dark"] .table-bordered th,
+    body[data-theme="dark"] .table-bordered td {
+      border-color: #495057; /* Darker gray border in dark mode */
+    }
+  </style>
 {% block content %}
 <div class="container">
-    <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
+  <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
 
-    {% if groups %}
-        <h2>Your Groups</h2>
-        <ul class="list-group">
-            {% for group in groups %}
-                <li class="list-group-item">
-                    <a href="{{ url_for('views.group_details', group_id=group.id) }}">
-                        {{ group.name }}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>You haven't joined any groups yet.</p>
-    {% endif %}
+  {% if groups %}
+  <h2>Your Groups</h2>
+  <table class="table table-bordered table-hover" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+    <thead>
+      <tr>
+        <th>Group Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in groups %}
+      <tr
+        class="clickable-row"
+        data-href="{{ url_for('views.group_details', group_id=group.id) }}"
+      >
+        <td>
+          {{ group.name }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>You haven't joined any groups yet.</p>
+  {% endif %}
 
-    <div class="mt-4">
-        <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">Create a New Group</a>
-    </div>
+  <div class="mt-4">
+    <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">
+      Create a New Group
+    </a>
+  </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", (event) => {
+    const rows = document.querySelectorAll(".clickable-row");
+    rows.forEach((row) => {
+      row.addEventListener("click", () => {
+        window.location.href = row.dataset.href;
+      });
+    });
+  });
+</script>
+
+<style>
+    /* Style for hover effect on clickable rows */
+    .clickable-row:hover {
+      cursor: pointer; /* Change cursor to pointer on hover */
+    }
+  </style>
 {% endblock %}

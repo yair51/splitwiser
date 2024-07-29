@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from flask_mail import Message
-from .models import Group, Expense, Invitation, User, expense_participants
+from .models import Group, Expense, Invitation, User, expense_participants, RecurrenceFrequency
 from app.helpers import send_email, extract_data_from_receipt
 from . import db, mail
 import datetime
@@ -16,6 +16,7 @@ import pytesseract
 import os
 from PIL import Image
 import io
+
 
 
 views = Blueprint('views', __name__)
@@ -95,6 +96,28 @@ def calculate_balances(group):
 #         description = request.form['description']
 #         amount = float(request.form['amount'])
 #         paid_by_id = current_user.id  # The currently logged-in user paid the expense
+#         is_recurring = request.form.get('is_recurring') == 'on'  # Convert to boolean
+#         recurrence_frequency = RecurrenceFrequency(request.form.get('recurrence_frequency')) if is_recurring else None
+
+
+#         # Basic input validation (you can add more as needed)
+#         if not description or amount <= 0:
+#             flash('Please enter a valid description and amount.', 'danger')
+#             return render_template('add_expense.html', group=group)
+
+#         new_expense = Expense(
+#             description=description,
+#             amount=amount,
+#             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
+#             group_id=group_id,
+#             paid_by_id=paid_by_id,
+#             is_recurring=is_recurring,
+#             recurrence_frequency=recurrence_frequency
+#         )
+#         db.session.add(new_expense)
+#         db.session.commit()
+
+
 
 #         # Basic input validation (you can add more as needed)
 #         if not description or amount <= 0:
@@ -388,3 +411,50 @@ def upload_receipt():
     except Exception as e:
         current_app.logger.error("Error processing receipt: %s", e)
         return jsonify({"success": False, "error": "Error processing receipt"})
+      
+      
+@views.route('/api/group/<int:group_id>/expenses')
+@login_required
+def get_expenses(group_id):
+   group = Group.query.get_or_404(group_id)
+   if current_user not in group.members:
+       abort(403)
+  
+   expenses = Expense.query.filter_by(group_id=group_id).all()
+  
+   # Convert expenses to dictionaries for JSON serialization
+   expense_list = [
+       {
+           'description': expense.description,
+           'amount': expense.amount,
+           'date': expense.date.strftime('%Y-%m-%d'),
+           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
+           'is_recurring': expense.is_recurring,
+           'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
+       } for expense in expenses
+   ]
+  
+   return jsonify(expense_list)
+
+@views.route('/settings', methods=['GET', 'POST'])
+@login_required
+def update_settings():
+    if request.method == 'POST':
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        email = request.form.get('email')
+        dark_mode = request.form.get('dark_mode') == 'on'  # Convert to boolean
+
+        # Validate input data
+
+        current_user.first_name = first_name
+        current_user.last_name = last_name
+        current_user.email = email
+        current_user.dark_mode = dark_mode
+        db.session.commit()
+
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('views.update_settings'))
+
+    return render_template('settings.html')
+
