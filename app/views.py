@@ -1,11 +1,22 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, session, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, session, current_app, jsonify
 from flask_login import login_required, current_user
+from werkzeug.security import generate_password_hash
 from flask_mail import Message
-from .models import Group, Expense, Invitation, User, RecurrenceFrequency
-from app.helpers import send_email
+from .models import Group, Expense, Invitation, User, expense_participants, RecurrenceFrequency
+from app.helpers import send_email, extract_data_from_receipt
 from . import db, mail
 import datetime
 import secrets
+from werkzeug.utils import secure_filename
+import io
+from google.cloud import vision #import the google cloud vision library
+import json
+from openai import OpenAI
+import pytesseract
+import os
+from PIL import Image
+import io
+
 
 
 views = Blueprint('views', __name__)
@@ -72,44 +83,61 @@ def calculate_balances(group):
 
 
 
-@views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
-@login_required
-def add_expense(group_id):
-    group = Group.query.get_or_404(group_id)
+# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
+# @login_required
+# def add_expense(group_id):
+#     group = Group.query.get_or_404(group_id)
 
-    # Check if the user is a member of the group
-    if current_user not in group.members:
-        abort(403)  # Forbidden access
+#     # Check if the user is a member of the group
+#     if current_user not in group.members:
+#         abort(403)  # Forbidden access
 
-    if request.method == 'POST':
-        description = request.form['description']
-        amount = float(request.form['amount'])
-        paid_by_id = current_user.id  # The currently logged-in user paid the expense
-        is_recurring = request.form.get('is_recurring') == 'on'  # Convert to boolean
-        recurrence_frequency = RecurrenceFrequency(request.form.get('recurrence_frequency')) if is_recurring else None
+#     if request.method == 'POST':
+#         description = request.form['description']
+#         amount = float(request.form['amount'])
+#         paid_by_id = current_user.id  # The currently logged-in user paid the expense
+#         is_recurring = request.form.get('is_recurring') == 'on'  # Convert to boolean
+#         recurrence_frequency = RecurrenceFrequency(request.form.get('recurrence_frequency')) if is_recurring else None
 
 
-        # Basic input validation (you can add more as needed)
-        if not description or amount <= 0:
-            flash('Please enter a valid description and amount.', 'danger')
-            return render_template('add_expense.html', group=group)
+#         # Basic input validation (you can add more as needed)
+#         if not description or amount <= 0:
+#             flash('Please enter a valid description and amount.', 'danger')
+#             return render_template('add_expense.html', group=group)
 
-        new_expense = Expense(
-            description=description,
-            amount=amount,
-            date=datetime.datetime.utcnow(),  # Use UTC time for consistency
-            group_id=group_id,
-            paid_by_id=paid_by_id,
-            is_recurring=is_recurring,
-            recurrence_frequency=recurrence_frequency
-        )
-        db.session.add(new_expense)
-        db.session.commit()
+#         new_expense = Expense(
+#             description=description,
+#             amount=amount,
+#             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
+#             group_id=group_id,
+#             paid_by_id=paid_by_id,
+#             is_recurring=is_recurring,
+#             recurrence_frequency=recurrence_frequency
+#         )
+#         db.session.add(new_expense)
+#         db.session.commit()
 
-        flash('Expense added successfully!', 'success')
-        return redirect(url_for('views.group_details', group_id=group_id))
 
-    return render_template('add_expense.html', group=group)
+
+#         # Basic input validation (you can add more as needed)
+#         if not description or amount <= 0:
+#             flash('Please enter a valid description and amount.', 'danger')
+#             return render_template('add_expense.html', group=group)
+
+#         new_expense = Expense(
+#             description=description,
+#             amount=amount,
+#             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
+#             group_id=group_id,
+#             paid_by_id=paid_by_id
+#         )
+#         db.session.add(new_expense)
+#         db.session.commit()
+
+#         flash('Expense added successfully!', 'success')
+#         return redirect(url_for('views.group_details', group_id=group_id))
+
+#     return render_template('add_expense.html', group=group)
 
 
 
@@ -135,10 +163,6 @@ def invite_to_group(group_id):
         group=group, 
         token=token
     )
-            # print(e.message)
-        # msg = Message('Splitwiser Group Invitation', recipients=[email])
-        # msg.body = render_template('email/invitation.html', group=group, token=token)
-        # mail.send(msg)
 
         flash('Invitation sent successfully!', 'success')
         return redirect(url_for('views.group_details', group_id=group_id))
@@ -187,6 +211,208 @@ def leave_group(group_id):
     else:
         abort(403)  # Forbidden - not a member of the group
 
+
+
+@views.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        # Update user information
+        current_user.first_name = request.form['first_name']
+        current_user.last_name = request.form['last_name']
+        # ... (Handle other profile data updates)
+
+        if request.form['password']:
+            current_user.password = generate_password_hash(
+                request.form['password'], method='pbkdf2:sha256'
+            )
+
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+
+    # Calculate expense statistics
+    total_expenses = sum(expense.amount for group in current_user.groups for expense in group.expenses if expense.paid_by == current_user)
+    # You can calculate other statistics like average expense, most frequent category, etc.
+
+    return render_template('profile.html', total_expenses=total_expenses)  # Add more statistics as needed
+
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
+
+@views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
+@login_required
+def add_expense(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    # Check if user is a member of the group
+    if current_user not in group.members:
+        abort(403)  # Forbidden access
+
+
+    if request.method == 'POST':
+        items_data = request.get_json()['items']  # Get items as JSON array
+        print(items_data)
+
+        for item in items_data:
+            description = item["name"]
+            amount = float(item["price"])
+            participant_ids = [int(p) for p in item.get("participants", [])]
+            # Create new expense object
+            expense = Expense(
+                description=description,
+                amount=amount,
+                date=datetime.datetime.utcnow(),
+                group_id=group_id,
+                paid_by=current_user  
+            )
+            # Associate participants with the expense (using the new relationship)
+            for participant_id in participant_ids:
+                participant = User.query.get(participant_id)
+                # Add the user to the expense's participants
+                if participant and participant in group.members:
+                    print(participant)
+                    expense.participants.append(participant)
+
+            db.session.add(expense)
+
+        db.session.commit()
+
+        flash('Expense(s) added successfully!', 'success')
+        return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
+
+    return render_template('add_expense.html', group=group)
+
+
+
+# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
+# @login_required
+# def add_expense(group_id):
+    # group = Group.query.get_or_404(group_id)
+
+#     # Check if user is a member of the group
+#     if current_user not in group.members:
+#         abort(403)  # Forbidden access
+
+#     if request.method == 'POST':
+#         item_data = request.get_json()['items']  # Get items as JSON array
+#         print(item_data)
+
+#         for item in item_data:
+#             description = item["name"]
+#             amount = float(item["price"])
+#             participant_ids = [int(p) for p in item.get("participants", [])]
+#             # ... (Add error handling for invalid data here)
+
+#             # Create the Expense object
+#             expense = Expense(
+#                 description=description,
+#                 amount=amount,
+#                 date=datetime.utcnow(),
+#                 group=group,
+#                 paid_by=current_user  
+#             )
+
+#             # Associate participants with the expense
+#             if participant_ids:  # If participants are selected
+#                 for participant_id in participant_ids:
+#                     participant = User.query.get(participant_id)
+#                     if participant:  # Check if user exists (for security)
+#                         expense.participants.append(participant)
+
+#             db.session.add(expense)
+
+#         db.session.commit()
+
+#         flash('Expense(s) added successfully!', 'success')
+#         return redirect(url_for('views.group_details', group_id=group_id))
+
+#     return render_template('add_expense.html', group=group)
+
+# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
+# @login_required
+# def add_expense(group_id):
+#     group = Group.query.get_or_404(group_id)
+
+#     # Check if the user is a member of the group
+#     if current_user not in group.members:
+#         abort(403)  # Forbidden access
+
+#     # if request.method == 'POST':
+#     #     # Extract items if receipt image is uploaded
+#     #     receipt_image = request.files.get('receipt_image')
+#     #     if receipt_image and allowed_file(receipt_image.filename):
+#     #         try:
+#     #             image_data = receipt_image.read()
+#     #             img = Image.open(io.BytesIO(image_data))
+#     #             extracted_items = extract_data_from_receipt(img)["items"]  # Extract items from the receipt
+#     #         except Exception as e:
+#     #             current_app.logger.error("Error extracting items from receipt: %s", e)
+#     #             flash('Failed to extract items from the receipt.', 'danger')
+#     #             return render_template('add_expense.html', group=group)
+#     #     else:
+#     #         # Get items from manual input (JSON array)
+#     #         extracted_items = json.loads(request.form.get("item_data", "[]"))
+
+
+#     #     # Create expenses based on the extracted/input items
+#     #     for item_data in extracted_items:
+#     #         item_name = item_data["name"]
+#     #         item_price = float(item_data["price"])
+#     #         # participant_ids = item_data.get("participants", [])  # Assuming a list of user IDs
+
+#     #         print(item_data)
+#     #         # Create the Expense object
+#     #         new_expense = Expense(
+#     #             description=item_name,
+#     #             amount=item_price,
+#     #             date=datetime.datetime.utcnow(),
+#     #             group_id=group_id,
+#     #             paid_by=current_user,
+#     #             # participants=[User.query.get(int(user_id)) for user_id in participant_ids if User.query.get(int(user_id)) in group.members]
+#     #         )
+
+#     #         db.session.add(new_expense)
+
+#     #     db.session.commit()
+
+#     #     flash('Expense(s) added successfully!', 'success')
+#     #     return redirect(url_for('views.group_details', group_id=group_id))
+
+#     return render_template('add_expense.html', group=group)
+    
+
+
+@views.route('/upload_receipt', methods=['POST'])
+@login_required
+def upload_receipt():
+    if 'receipt_image' not in request.files:
+        return jsonify({"success": False, "error": "No file part"})
+
+    file = request.files['receipt_image']
+
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"})
+    
+    if not allowed_file(file.filename):
+        return jsonify({"success": False, "error": "Invalid file type. Please upload an image."})
+
+    try:
+        image_data = file.read()
+        img = Image.open(io.BytesIO(image_data))
+        extracted_data = extract_data_from_receipt(img)
+        print(extracted_data)
+        return jsonify({"success": True, "items": extracted_data['items']})
+    except Exception as e:
+        current_app.logger.error("Error processing receipt: %s", e)
+        return jsonify({"success": False, "error": "Error processing receipt"})
+      
+      
 @views.route('/api/group/<int:group_id>/expenses')
 @login_required
 def get_expenses(group_id):

@@ -14,6 +14,13 @@ user_group = db.Table('user_group',
                       db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True)
                       )
 
+# Association table for the many-to-many relationship between Expenses and Participants
+
+expense_participants = db.Table('expense_participants',
+    db.Column('expense_id', db.Integer, db.ForeignKey('expense.id'), primary_key=True),
+    db.Column('participant_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -23,6 +30,8 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(250), nullable=False)
     groups = db.relationship('Group', secondary=user_group, backref=db.backref('members', lazy=True))
+    # Expenses that a user is associated with
+    expenses_participating = db.relationship('Expense', secondary=expense_participants, lazy='dynamic') 
     dark_mode = db.Column(db.Boolean, default=False) 
 
     def __repr__(self):
@@ -48,7 +57,9 @@ class Expense(db.Model):
     date = db.Column(db.Date, nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
     paid_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    paid_by = db.relationship('User', foreign_keys=[paid_by_id])  # Who paid the expense
+    paid_by = db.relationship('User', foreign_keys=[paid_by_id])  # User who paid for an expense
+    participants = db.relationship(
+        'User', secondary=expense_participants, backref=db.backref('expenses', lazy='dynamic'))
     is_recurring = db.Column(db.Boolean, default=False)
     recurrence_frequency = db.Column(db.Enum(RecurrenceFrequency), nullable=True)
 

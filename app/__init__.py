@@ -25,6 +25,7 @@ app.config.from_object(config_class)  # Load the appropriate config class
 # app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI') # Your PostgreSQL connection URI
 # app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
+# db.Model.metadata.clear()  # Clear SQLAlchemy metadata cache
 migrate = Migrate(app, db)  # Initialize Migrate
 mail = Mail(app)
 

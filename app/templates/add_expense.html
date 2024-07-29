@@ -4,57 +4,145 @@
 
 {% block content %}
 <div class="container">
- <h2>Add Expense to {{ group.name }}</h2>
- <form method="POST" action="{{ url_for('views.add_expense', group_id=group.id) }}">
+  <h2>Add Expense to {{ group.name }}</h2>
 
+  <form id="expenseForm" method="POST" action="{{ url_for('views.add_expense', group_id=group.id) }}" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="receipt_image" class="form-label">Upload Receipt</label>
+      <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
+    </div>
 
-   <div class="mb-3">
-     <label for="description" class="form-label">Description</label>
-     <input type="text" class="form-control" id="description" name="description" required>
-   </div>
+    <div id="extracted-items" style="display: none;">
+      <h3>Review and Edit Items:</h3>
+      <table class="table" id="item-table">
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Price</th>
+            <th>Participants</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="item-table-body"></tbody>
+      </table>
+      <button type="button" class="btn btn-secondary" id="add-item-btn">Add Item</button>
+    </div>
 
-
-   <div class="mb-3">
-     <label for="amount" class="form-label">Amount</label>
-     <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0.01" required>
-   </div>
-
-
-   <div class="mb-3">
-     <div class="form-check">
-       <input type="checkbox" class="form-check-input" id="isRecurring" name="is_recurring">
-       <label class="form-check-label" for="isRecurring">Recurring Expense?</label>
-     </div>
-   </div>
-
-
-   <div id="recurringOptions" class="mb-3" style="display: none;">
-     <label for="recurrenceFrequency" class="form-label">Recurrence Frequency</label>
-     <select class="form-select" id="recurrenceFrequency" name="recurrence_frequency">
-       <option value="once_a_week">Once a week</option>
-       <option value="once_every_two_weeks">Once every two weeks</option>
-       <option value="once_a_month">Once a month</option>
-     </select>
-   </div>
-
-
-   <button type="submit" class="btn btn-primary">Add Expense</button>
-
-
- </form>
+    <button type="submit" class="btn btn-primary">Confirm and Add Expense</button>
+  </form>
 </div>
 
-
 <script>
- // JavaScript to show/hide recurring options
- const isRecurringCheckbox = document.getElementById('isRecurring');
- const recurringOptions = document.getElementById('recurringOptions');
+const receiptImageInput = document.getElementById('receipt_image');
+const extractedItemsDiv = document.getElementById('extracted-items');
+const itemTableBody = document.getElementById('item-table-body');
+const addItemBtn = document.getElementById('add-item-btn');
+
+receiptImageInput.addEventListener('change', () => {
+    const formData = new FormData();
+    formData.append('receipt_image', receiptImageInput.files[0]);
+    console.log(formData)
+    fetch('/upload_receipt', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.items) {
+            displayExtractedItems(data.items);
+        } else {
+            alert("Error extracting items from receipt. Please try again.");
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("An error occurred while processing the receipt. Please try again.");
+    });
+});
 
 
- isRecurringCheckbox.addEventListener('change', () => {
-   recurringOptions.style.display = isRecurringCheckbox.checked ? 'block' : 'none';
- });
+function displayExtractedItems(items) {
+    extractedItemsDiv.style.display = 'block'; 
+    itemTableBody.innerHTML = ''; 
+
+    items.forEach((item, index) => {
+        let row = `
+            <tr id="item-row-${index}">
+                <td><input type="text" class="form-control item-name" name="items[${index}][name]" value="${item.name}"></td>
+                <td><input type="number" class="form-control item-price" name="items[${index}][price]" value="${item.price}" step="0.01" min="0"></td>
+                <td>
+                    <select class="form-select item-participants" name="items[${index}][participants][]" multiple>
+                        {% for member in group.members %}
+                            <option value="{{ member.id }}">{{ member.first_name }} {{ member.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}">Remove</button></td>
+            </tr>`;
+        itemTableBody.innerHTML += row;
+    });
+
+    // Attach event listeners for remove buttons
+    const removeButtons = document.querySelectorAll('.remove-item-btn');
+    removeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const index = button.dataset.index;
+            document.getElementById(`item-row-${index}`).remove();
+        });
+    });
+}
+
+addItemBtn.addEventListener('click', () => {
+    let lastIndex = itemTableBody.querySelectorAll('tr').length;
+    let row = `
+        <tr id="item-row-${lastIndex}">
+            <td><input type="text" class="form-control item-name" name="items[${lastIndex}][name]"></td>
+            <td><input type="number" class="form-control item-price" name="items[${lastIndex}][price]" step="0.01" min="0"></td>
+            <td>
+                <select class="form-select item-participants" name="items[${lastIndex}][participants][]" multiple>
+                    {% for member in group.members %}
+                        <option value="{{ member.id }}">{{ member.first_name }} {{ member.last_name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${lastIndex}">Remove</button></td>
+        </tr>`;
+    itemTableBody.innerHTML += row;
+});
+
+//Add event listener to form for image submission
+document.getElementById('expenseForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    // Gather edited item data from the table
+    const editedItems = [];
+    const rows = document.querySelectorAll('#item-table-body tr');
+    rows.forEach(row => {
+        const name = row.querySelector('.item-name').value;
+        const price = parseFloat(row.querySelector('.item-price').value);
+        const participants = Array.from(row.querySelectorAll('.item-participants option:checked')).map(option => option.value);
+        editedItems.push({ name, price, participants });
+    });
+    console.log(JSON.stringify({ group_id: {{ group.id }}, items: editedItems }))
+
+    // Send the edited item data to the backend
+    fetch('{{ url_for('views.add_expense', group_id=group.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ group_id: {{ group.id }}, items: editedItems })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url; // Redirect to group details
+        } else {
+            alert("Error adding expenses. Please try again.");
+        }
+    });
+});
+
+
 </script>
-
-
 {% endblock %}
