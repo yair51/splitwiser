@@ -130,6 +130,7 @@
    // Global variables (ensure they are defined in your Flask context)
    const currentGroupId = {{ group.id }};
    const currentUserName = "{{ current_user.first_name }} {{ current_user.last_name }}";
+   const currentUserId = {{ current_user.id }}
     // Wait for the DOM to be fully loaded
    document.addEventListener("DOMContentLoaded", () => {
      // Fetch and display expenses
@@ -150,11 +151,13 @@
            const row = document.createElement("tr");
           
            // Update the balance for the user
-           expensePercentage =1;
+           const participantIds = expense.participants.map(participant => participant.id); // Assuming your API returns participant IDs
+           const isParticipant = participantIds.includes(currentUserId); // You'll need to define currentUserId in your Flask context
+           const expensePercentage = isParticipant ? 1 / expense.participants.length : 0;
            if (expense.paid_by === currentUserName) {
-             balance += expense.amount;
-           } else {
-             balance -= expense.amount / expensePercentage; // TODO: create expensePercentage for each expense and user
+             balance += expense.amount - (expense.amount * expensePercentage); // Payer gets credit for the full amount minus their share
+           } else if (isParticipant) {
+             balance -= expense.amount * expensePercentage; 
            }
            
           

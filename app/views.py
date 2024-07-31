@@ -9,7 +9,6 @@ import datetime
 import secrets
 from werkzeug.utils import secure_filename
 import io
-from google.cloud import vision #import the google cloud vision library
 import json
 from openai import OpenAI
 import pytesseract
@@ -68,17 +67,25 @@ def group_details(group_id):
     return render_template('group.html', group=group, expenses=expenses, balances=balances)
 
 def calculate_balances(group):
-    # ... (Your balance calculation logic here)
-    # For now, you can use a simple equal split calculation
-    total_expenses = sum(expense.amount for expense in group.expenses)
-    num_members = len(group.members)
-    share_per_person = total_expenses / num_members
+    """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
 
-    balances = {}
-    for member in group.members:
-        balances[member.id] = share_per_person - sum(
-            expense.amount for expense in group.expenses if expense.paid_by_id == member.id
-        )
+    balances = {member.id: 0 for member in group.members}
+
+    for expense in group.expenses:
+        num_participants = len(expense.participants)
+
+        # Check for zero participants (shouldn't happen, but it's a good safety measure)
+        if num_participants == 0:
+            print(f"Expense {expense.id} has no participants. Skipping.")  
+            continue  # Skip this expense
+        
+        share_per_participant = expense.amount / num_participants
+
+        for participant in expense.participants:
+            balances[participant.id] -= share_per_participant
+
+        balances[expense.paid_by_id] += expense.amount - share_per_participant
+
     return balances
 
 
@@ -431,6 +438,7 @@ def get_expenses(group_id):
            'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
            'is_recurring': expense.is_recurring,
            'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
+           'participants': [{'id': participant.id, 'name': participant.first_name + ' ' + participant.last_name} for participant in expense.participants]
        } for expense in expenses
    ]
   
