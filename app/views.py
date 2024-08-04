@@ -53,7 +53,6 @@ def create_group():
 @login_required
 def group_details(group_id):
     group = Group.query.get_or_404(group_id)
-
     # Check if the user is a member of the group
     if current_user not in group.members:
         abort(403)  # Forbidden access
@@ -84,7 +83,7 @@ def calculate_balances(group):
         for participant in expense.participants:
             balances[participant.id] -= share_per_participant
 
-        balances[expense.paid_by_id] += expense.amount - share_per_participant
+        balances[expense.paid_by_id] += expense.amount
 
     return balances
 
@@ -432,8 +431,9 @@ def get_expenses(group_id):
    # Convert expenses to dictionaries for JSON serialization
    expense_list = [
        {
+           'id': expense.id,
            'description': expense.description,
-           'amount': expense.amount,
+           'amount': f"{expense.amount:.2f}",
            'date': expense.date.strftime('%Y-%m-%d'),
            'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
            'is_recurring': expense.is_recurring,
@@ -466,3 +466,65 @@ def update_settings():
 
     return render_template('settings.html')
 
+@views.route('/group/<int:group_id>/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_expense(group_id, expense_id):
+    group = Group.query.get_or_404(group_id)
+    expense = Expense.query.get_or_404(expense_id)
+
+    # Authorization check: Ensure the current user is a member of the group and 
+    #  is either the payer or an admin (you'll need to define admin logic)
+    if current_user not in group.members or (expense.paid_by != current_user): 
+        abort(403)  # Forbidden access
+
+    if request.method == 'POST':
+        try:
+            form_data = request.form  
+            expense.description = form_data.get('description')
+            expense.amount = float(form_data.get('amount'))
+
+            # Update participants
+            participant_ids = [int(p_id) for p_id in form_data.getlist('participants')]
+            expense.participants = User.query.filter(User.id.in_(participant_ids)).all()
+
+            db.session.commit()
+
+            # Recalculate balances for the group after updating the expense
+            calculate_balances(expense.group)
+
+            flash('Expense updated successfully!', 'success')
+            jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
+
+        except ValueError:  # Handle potential conversion errors (e.g., if 'amount' is not a valid float)
+            flash('Invalid input. Please check the amount.', 'error')
+
+    return redirect(url_for('views.group_details', group_id=group_id))
+
+
+@views.route('/api/expense/<int:expense_id>', methods=['DELETE'])
+@login_required
+def delete_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+    group_id = expense.group_id  # Store the group ID before deleting
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members or (expense.paid_by != current_user): 
+        abort(403)  # Forbidden access
+    if request.method == 'DELETE':
+        db.session.delete(expense)
+        db.session.commit()
+        # Recalculate balances for the group after deleting the expense
+        calculate_balances(Group.query.get(group_id))  # Fetch the group again after deletion
+        return jsonify({"success": True})
+    return redirect(url_for('views.group_details', group_id=group_id))
+    # ... (handle other methods or errors if needed)
+@views.route('/api/group/<int:group_id>/balance')
+@login_required
+def get_group_balance(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        abort(403) 
+
+    balances = calculate_balances(group)
+    user_balance = balances.get(current_user.id, 0)  # Get balance for current user or default to 0
+
+    return jsonify({'balance': user_balance})
