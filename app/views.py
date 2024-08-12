@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from flask_mail import Message
-from .models import Group, Expense, Invitation, User, expense_participants, RecurrenceFrequency
+from .models import Group, Expense, Invitation, User, expense_participants
 from app.helpers import send_email, extract_data_from_receipt
 from . import db, mail
 import datetime
