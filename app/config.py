@@ -28,10 +28,10 @@ class DevelopmentConfig(Config):
 class StagingConfig(Config):
     DEBUG = True
     # Replace with your staging database URI
-    SQLALCHEMY_DATABASE_URI = os.environ.get('STAGING_DATABASE_URI') or 'postgresql://...'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://...'
 
 
 class ProductionConfig(Config):
     DEBUG = False
     # Replace with your production database URI
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or 'postgresql://...'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://...'
