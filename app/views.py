@@ -9,25 +9,57 @@ import datetime
 import secrets
 from werkzeug.utils import secure_filename
 import io
-from google.cloud import vision #import the google cloud vision library
-import json
-from openai import OpenAI
-import pytesseract
-import os
-from PIL import Image
+from PIL import Image, ExifTags
 import io
+import pillow_heif
 
 
 
 views = Blueprint('views', __name__)
 
-# ... (other imports)
 
 @views.route('/')
+@login_required
+def index():
+    # Sample testimonials data (replace with your actual data)
+    testimonials = [
+        { 'quote': "Splitwiser has made splitting bills with my roommates so much easier! No more arguments or confusion.", 'author': "Sarah M." },
+        { 'quote': "The receipt scanning feature is a game-changer! I love how it automatically adds expenses for me.", 'author': "David L." },
+        { 'quote': "Splitwiser has saved me so much time and stress. I highly recommend it to anyone sharing expenses.", 'author': "Emily K." }
+    ]
+    return render_template('index.html', testimonials=testimonials) 
+
+@views.route('/dashboard')
 @login_required
 def dashboard():
     user_groups = current_user.groups
     return render_template('dashboard.html', groups=user_groups) 
+
+@views.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        subject = request.form['subject']
+        message = request.form['message']
+
+        # Basic input validation (you might want to add more robust validation)
+        if not name or not email or not message:
+            flash('Please fill in all required fields.', 'danger')
+            return render_template('contact.html')
+
+        # Send email to your support address
+        msg = Message(f'Splitwiser Contact Form - {subject}', 
+                      sender=email, 
+                      recipients=[current_app.config['MAIL_DEFAULT_SENDER']])  # Use your support email here
+        msg.body = f"From: {name} <{email}>\n\n{message}"
+        mail.send(msg)
+
+        flash('Your message has been sent. Thank you!', 'success')
+        return redirect(url_for('views.contact'))  # Redirect back to the contact page
+
+    return render_template('contact.html')  
+
 
 
 @views.route('/create_group', methods=['GET', 'POST'])
@@ -61,6 +93,11 @@ def group_details(group_id):
 
     # Get expenses for the group
     expenses = group.expenses
+    # expenses = reversed(expenses)
+    # print("expense type", type(expenses))
+    # for expense in expenses:
+    #     print(expense)
+    # reversed_expenses = expenses[::-1]  # Reverse the order to show the latest expenses first
 
     # Calculate balances (you'll need to implement this based on your chosen algorithm)
     balances = calculate_balances(group)
@@ -237,7 +274,7 @@ def profile():
     return render_template('profile.html', total_expenses=total_expenses)  # Add more statistics as needed
 
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'heic'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -269,7 +306,7 @@ def add_expense(group_id):
                 amount=amount,
                 date=datetime.datetime.utcnow(),
                 group_id=group_id,
-                paid_by=current_user  
+                paid_by=current_user
             )
             # Associate participants with the expense (using the new relationship)
             for participant_id in participant_ids:
@@ -393,6 +430,17 @@ def add_expense(group_id):
 def upload_receipt():
     if 'receipt_image' not in request.files:
         return jsonify({"success": False, "error": "No file part"})
+    
+    file = request.files['receipt_image']
+    language = request.form.get('receipt_language', 'eng')  # Get language, default to English
+
+        # Adjust the prompt based on detected language
+    if language == 'heb':  # Hebrew
+        prompt_language = "Hebrew"
+    elif language == 'eng':  # English
+        prompt_language = "English"
+    else:
+        prompt_language = "the language in the text"
 
     file = request.files['receipt_image']
 
@@ -403,9 +451,47 @@ def upload_receipt():
         return jsonify({"success": False, "error": "Invalid file type. Please upload an image."})
 
     try:
-        image_data = file.read()
-        img = Image.open(io.BytesIO(image_data))
-        extracted_data = extract_data_from_receipt(img)
+        # Check if the file is a HEIC image
+        if file.filename.lower().endswith('.heic'):
+            # Read the image file using pillow_heif
+            heif_file = pillow_heif.read_heif(file)
+            # Convert the HEIF file to a PIL Image
+            img = Image.frombytes(
+                heif_file.mode,
+                heif_file.size,
+                heif_file.data,
+                "raw",
+                heif_file.mode,
+                heif_file.stride)  
+        else:
+            # Read the image file
+            image_data = file.read()
+            print("image_data type", type(image_data))
+            # Open the image using PIL
+            img = Image.open(io.BytesIO(image_data))
+            
+            # Correct the orientation based on EXIF data (common issue with mobile photos)
+            try:
+                for orientation in ExifTags.TAGS.keys():
+                    print("orientation")
+                    if ExifTags.TAGS[orientation] == 'Orientation':
+                        break
+                exif = img.getexif()
+                if exif is not None:
+                    print(f"exif data: {exif}")
+                    orientation = exif[orientation]
+                    if orientation == 3:
+                        img = img.rotate(180, expand=True)
+                    elif orientation == 6:
+                        img = img.rotate(270, expand=True)
+                    elif orientation == 8:
+                        img = img.rotate(90, expand=True)
+            except (AttributeError, KeyError, IndexError):
+                # Cases: image don't have getexif
+                pass
+        # image_data = file.read()
+        # img = Image.open(io.BytesIO(image_data))
+        extracted_data = extract_data_from_receipt(img, language, prompt_language)
         print(extracted_data)
         return jsonify({"success": True, "items": extracted_data['items']})
     except Exception as e:

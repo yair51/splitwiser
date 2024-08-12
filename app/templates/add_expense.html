@@ -1,34 +1,55 @@
+
+
+
 {% extends "base.html" %}
 {% block title %}Add Expense to {{ group.name }}{% endblock %}
-
 
 {% block content %}
 <div class="container">
   <h2>Add Expense to {{ group.name }}</h2>
 
   <form id="expenseForm" method="POST" action="{{ url_for('views.add_expense', group_id=group.id) }}" enctype="multipart/form-data">
+
     <div class="mb-3">
-      <label for="receipt_image" class="form-label">Upload Receipt</label>
-      <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
-    </div>
-
-    <div id="extracted-items" style="display: none;">
-      <h3>Review and Edit Items:</h3>
-      <table class="table" id="item-table">
-        <thead>
-          <tr>
-            <th>Item Name</th>
-            <th>Price</th>
-            <th>Participants</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="item-table-body"></tbody>
-      </table>
-      <button type="button" class="btn btn-secondary" id="add-item-btn">Add Item</button>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Confirm and Add Expense</button>
+        <label for="receipt_image" class="form-label">Upload Receipt</label>
+        <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
+      </div>
+  
+      <div class="mb-3">
+        <label for="receipt_language" class="form-label">Receipt Language</label>
+        <select class="form-select" id="receipt_language" name="receipt_language">
+            <option value="eng">English</option>
+            <option value="heb">Hebrew</option>
+        </select>
+      </div>
+  
+      <div class="d-flex justify-content-between mb-3"> 
+          <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button>
+          <!-- <button id="confirmButton">Confirm and Add Expense</button> -->
+          <button type="button" class="btn btn-success" id="add-item-btn">Add Item</button>
+      </div>
+  
+      <div id="extracted-items" style="display: block;">
+        <h3>Expenses:</h3>
+        <table class="table" id="item-table">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Price</th>
+              <th>Participants</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="item-table-body"></tbody>
+        </table>
+      </div>
+  
+  
+      <div class="d-flex justify-content-center">
+          <button type="submit" class="btn btn-primary" id="confirm-add-btn" style="display: none;">Confirm and Add Expense</button>
+      </div>
+    <!-- <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button> -->
+    <!-- <button type="submit" class="btn btn-primary" id="confirm-add-btn" style="display: block;">Confirm and Add Expense</button> -->
   </form>
 </div>
 
@@ -37,78 +58,118 @@ const receiptImageInput = document.getElementById('receipt_image');
 const extractedItemsDiv = document.getElementById('extracted-items');
 const itemTableBody = document.getElementById('item-table-body');
 const addItemBtn = document.getElementById('add-item-btn');
+const processReceiptBtn = document.getElementById('process-receipt-btn');
+const confirmAddBtn = document.getElementById('confirm-add-btn');
+let items = []; 
 
-receiptImageInput.addEventListener('change', () => {
+
+function displayExtractedItems(items) {
+    // extractedItemsDiv.style.display = 'block';
+
+    items.forEach((item, index) => {
+        addItemToTable(item, index); // Use a separate function to add rows
+    });
+
+    updateRemoveButtonListeners(); // Update listeners after adding rows
+}
+
+// Function to add a new item to the table (used for both extracted and manually added items)
+function addItemToTable(item, index) {
+    let row = `
+        <tr id="item-row-${index}">
+            <td><input type="text" class="form-control item-name" name="items[${index}][name]" value="${item.name || ''}" required></td> 
+            <td><input type="number" class="form-control item-price" name="items[${index}][price]" required value="${item.price || ''}" step="0.01" min="0"></td>
+            <td class="participant-checkboxes">
+            {% for member in group.members %}
+                <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="items[${index}][participants][]" value="{{ member.id }}" id="participant-${index}-{{ member.id }}">
+                        <label class="form-check-label" for="participant-${index}-{{ member.id }}">
+                            {{ member.first_name }} {{ member.last_name }}
+                        </label>
+                    </div>
+            {% endfor %}
+            </td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}">Remove</button></td>
+        </tr>`;
+    itemTableBody.insertAdjacentHTML('beforeend', row); 
+}
+
+// Event listener for adding a new item manually
+addItemBtn.addEventListener('click', () => {
+    let lastIndex = itemTableBody.querySelectorAll('tr').length;
+    addItemToTable({}, lastIndex); // Add an empty item
+    updateConfirmButtonVisibility();
+    updateRemoveButtonListeners(); // Update listeners after adding a row
+});
+
+// Function to update event listeners for remove buttons
+function updateRemoveButtonListeners() {
+    const removeButtons = document.querySelectorAll('.remove-item-btn');
+    removeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const index = button.dataset.index;
+            document.getElementById(`item-row-${index}`).remove();
+            updateConfirmButtonVisibility(); 
+        });
+    });
+}
+
+
+// Function to update button visibility
+function updateConfirmButtonVisibility() {
+  rowCount = itemTableBody.querySelectorAll('tr').length;
+  confirmAddBtn.style.display = rowCount > 0 ? 'block' : 'none'; 
+}
+
+
+
+// Event listener for the "Process Receipt" button
+processReceiptBtn.addEventListener('click', function(event) {
+    event.preventDefault();
+
     const formData = new FormData();
-    formData.append('receipt_image', receiptImageInput.files[0]);
-    console.log(formData)
-    fetch('/upload_receipt', {
+    const file = receiptImageInput.files[0];
+    const languageSelect = document.getElementById('receipt_language');
+    const selectedLanguage = languageSelect.value;
+
+    if (!file) {
+        alert("Please select a receipt image.");
+        return;
+    }
+
+    formData.append('receipt_image', file);
+    formData.append('receipt_language', selectedLanguage);
+
+    // Show loading indicator
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+    this.disabled = true;
+
+    fetch('/upload_receipt', { 
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(data => {
+        // Hide loading indicator and re-enable button
+        this.innerHTML = 'Process Receipt';
+        this.disabled = false;
+
         if (data.success && data.items) {
             displayExtractedItems(data.items);
+            updateConfirmButtonVisibility();
         } else {
             alert("Error extracting items from receipt. Please try again.");
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        // Hide loading indicator and re-enable button
+        this.innerHTML = 'Process Receipt';
+        this.disabled = false;
         alert("An error occurred while processing the receipt. Please try again.");
     });
 });
 
-
-function displayExtractedItems(items) {
-    extractedItemsDiv.style.display = 'block'; 
-    itemTableBody.innerHTML = ''; 
-
-    items.forEach((item, index) => {
-        let row = `
-            <tr id="item-row-${index}">
-                <td><input type="text" class="form-control item-name" name="items[${index}][name]" value="${item.name}"></td>
-                <td><input type="number" class="form-control item-price" name="items[${index}][price]" value="${item.price}" step="0.01" min="0"></td>
-                <td>
-                    <select class="form-select item-participants" name="items[${index}][participants][]" multiple>
-                        {% for member in group.members %}
-                            <option value="{{ member.id }}">{{ member.first_name }} {{ member.last_name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}">Remove</button></td>
-            </tr>`;
-        itemTableBody.innerHTML += row;
-    });
-
-    // Attach event listeners for remove buttons
-    const removeButtons = document.querySelectorAll('.remove-item-btn');
-    removeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const index = button.dataset.index;
-            document.getElementById(`item-row-${index}`).remove();
-        });
-    });
-}
-
-addItemBtn.addEventListener('click', () => {
-    let lastIndex = itemTableBody.querySelectorAll('tr').length;
-    let row = `
-        <tr id="item-row-${lastIndex}">
-            <td><input type="text" class="form-control item-name" name="items[${lastIndex}][name]"></td>
-            <td><input type="number" class="form-control item-price" name="items[${lastIndex}][price]" step="0.01" min="0"></td>
-            <td>
-                <select class="form-select item-participants" name="items[${lastIndex}][participants][]" multiple>
-                    {% for member in group.members %}
-                        <option value="{{ member.id }}">{{ member.first_name }} {{ member.last_name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${lastIndex}">Remove</button></td>
-        </tr>`;
-    itemTableBody.innerHTML += row;
-});
 
 //Add event listener to form for image submission
 document.getElementById('expenseForm').addEventListener('submit', function(event) {
@@ -120,13 +181,14 @@ document.getElementById('expenseForm').addEventListener('submit', function(event
     rows.forEach(row => {
         const name = row.querySelector('.item-name').value;
         const price = parseFloat(row.querySelector('.item-price').value);
-        const participants = Array.from(row.querySelectorAll('.item-participants option:checked')).map(option => option.value);
+        const participants = Array.from(row.querySelectorAll('.participant-checkboxes input[type="checkbox"]:checked')) 
+            .map(checkbox => checkbox.value);
         editedItems.push({ name, price, participants });
+        console.log(editedItems)
     });
-    console.log(JSON.stringify({ group_id: {{ group.id }}, items: editedItems }))
 
     // Send the edited item data to the backend
-    fetch('{{ url_for('views.add_expense', group_id=group.id) }}', {
+    fetch('/group/{{group.id}}/add_expense', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -143,6 +205,6 @@ document.getElementById('expenseForm').addEventListener('submit', function(event
     });
 });
 
-
 </script>
+
 {% endblock %}

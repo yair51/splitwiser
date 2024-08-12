@@ -6,6 +6,7 @@ import json
 from openai import OpenAI
 import pytesseract
 import os
+from langdetect import detect
 
 
 # Send Email Function
@@ -39,23 +40,26 @@ def send_email(subject, recipients, template, **kwargs):
         app.logger.error("Error sending email: %s", e)
 
     
-def extract_data_from_receipt(image_data):
+def extract_data_from_receipt(image_data, language="eng", prompt_language="English"):
     """Extract data from receipt image using OCR and LLM."""
 
-    # Extract text using Tesseract OCR
-    try:
-        text = pytesseract.image_to_string(image_data)
-        print(text)
-    except Exception as e:
-        current_app.logger.error("Error performing OCR: %s", e)
-        flash('Failed to extract text from receipt. Please try again.', 'danger')
-        return None
 
-    # Parse text with OpenAI GPT
-    # openai.api_key = os.environ.get("OPENAI_API_KEY")
-    prompt = (f"Extract items, subtotal, total, cash, and change from this receipt text:\n\n{text}\n\n"
-                "Return the result as a JSON object with the following format:\n"
-                '{"items": [{"name": "item_name", "price": item_price}, ...], "subtotal": ..., "total": ..., "cash": ..., "change": ...}')
+
+    # Extract text using Tesseract OCR with the detected language
+    try:
+        text = pytesseract.image_to_string(image_data, lang=language)
+        # print(text)
+    except pytesseract.TesseractError as e:
+        print("Error")
+    prompt = (f"Extract items and their prices from the following receipt text in {language}. "
+            f"If an item name appears to be misspelled and you are confident about the correction, correct the spelling."
+            f"Ensure that you capture the item name and price accurately:\n\n"
+            f"{text}\n\n"
+            "Return the result as a JSON object with the following format:\n"
+            '{"items": [{"name": "item_name", "price": item_price}, ...]}\n'
+            "Example:\n"
+            'Receipt Text: "Milk 3.50, Bread 2.30, Tomatoes 5.90"\n'
+            'Output: {"items": [{"name": "Milk", "price": 3.50}, {"name": "Bread", "price": 2.30}, {"name": "Tomatoes", "price": 5.90}]}\n')
     try:
         client = OpenAI(
             # This is the default and can be omitted
@@ -69,21 +73,16 @@ def extract_data_from_receipt(image_data):
             ],
             model="gpt-3.5-turbo",
         )
-        print(response)
-        extracted_data = json.loads(response.choices[0].message.content)
-        print(extracted_data)
+        response = response.choices[0].message.content
+
+        # remove json formatting information if present
+        cleaned_response = response.strip('```json').strip('```')
+
+        extracted_data = json.loads(cleaned_response)
+        # Remove the triple backticks and 'json' identifier
+        # cleaned_response = response.strip('```json').strip('```')
         return extracted_data
 
-    # try:
-    #     response = openai.ChatCompletion.create(
-    #         model="gpt-3.5-turbo",
-            # messages=[
-            #     {"role": "system", "content": "You are an AI assistant that helps extract structured data from receipt text."},
-            #     {"role": "user", "content": prompt},
-            # ]
-    #     )
-    #     extracted_data = json.loads(response["choices"][0]["message"]["content"])
-    #     return extracted_data
     except Exception as e:
         current_app.logger.error("Error parsing receipt text: %s", e)
         flash('Failed to parse receipt data. Please try again or enter manually.', 'danger')

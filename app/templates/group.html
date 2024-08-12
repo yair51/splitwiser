@@ -48,10 +48,13 @@
 
  <div class="mb-3 d-flex justify-content-between align-items-start">
    <div>
+    <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-success">
+      Add Expense
+    </a>
       <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" class="btn btn-primary">
          Invite Members
        </a>
-       <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#memberListModal">
+       <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#memberListModal">
         Current Group Members
       </button>
    </div>
@@ -98,9 +101,7 @@
 
 
  <div class="mt-5 d-flex justify-content-between">
-   <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-primary">
-     Add Expense
-   </a>
+
 
 
    <div id="leaveGroupContainer">

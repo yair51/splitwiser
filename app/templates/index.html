@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Splitwiser - Simplify Shared Expenses{% endblock %}
+
+{% block content %}
+
+<style>
+/* Color Scheme: */
+/* Primary: #007bff (Bootstrap's default blue) - Maintains consistency with the navbar */
+/* Secondary: #28a745 (Bootstrap's success green) - Conveys positive financial outcomes */
+/* Accent: #ffc107 (Bootstrap's warning yellow) - Adds a touch of vibrancy and attention */
+/* Neutral: #f8f9fa (Bootstrap's light gray) - Provides a clean background */
+
+.body {
+    background-color: purple; /* Neutral background */
+}
+
+
+.hero {
+    padding: 80px 0;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 4rem; /* Larger headline */
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.hero .lead {
+    font-size: 1.25rem; /* Slightly larger lead text */
+    margin-bottom: 30px;
+}
+
+.hero .btn-primary {
+    background-color: #28a745; /* Secondary color for CTA */
+    border-color: #28a745;
+}
+
+.hero .btn-primary:hover {
+    background-color: #218838; /* Darker shade on hover */
+    border-color: #1e7e34;
+}
+
+.feature-section {
+    padding: 50px 0;
+}
+
+.feature-icon {
+    font-size: 4rem; /* Larger icon */
+    color: #007bff; /* Primary color for icons */
+    margin-bottom: 20px;
+}
+
+.feature-image {
+    height: 200px; /* Placeholder image height */
+    background-color: #eee; /* Light gray background for placeholder */
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+
+.testimonial {
+    border: 1px solid #ddd;
+    padding: 30px;
+    border-radius: 25px;
+    text-align: center; /* Center testimonial content */
+}
+
+.testimonial .quote {
+    font-size: 1.5rem; /* Larger quote text */
+    font-style: italic;
+    margin-bottom: 15px;
+}
+
+.testimonial .author {
+    font-weight: bold;
+    color: #28a745; /* Secondary color for author name */
+}
+
+
+.hero, .feature-row, .testimonial {
+    background-color: #EEEEEE;
+    border-radius: 25px;
+}
+
+.row {
+    padding: 50px 0;
+}
+
+</style>
+
+<section class="hero">
+    <div class="container">
+        <h1>Split Expenses, Not Friendships</h1>
+        <p class="lead">Effortless expense tracking for groups and roommates.</p>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Sign Up Free</a>
+    </div>
+</section>
+
+<section class="container feature-section">
+    <div class="row feature-row">
+        <div class="col-md-4 feature-item">
+            <div class="text-center">
+                <i class="fas fa-file-invoice-dollar feature-icon"></i>
+                <!-- <div class="feature-image"></div> -->
+                <h3>Effortless Expense Tracking</h3>
+                <p>Easily add and split expenses, no more mental math or spreadsheets.</p>
+            </div>
+        </div>
+        <div class="col-md-4 feature-item">
+            <div class="text-center">
+                <i class="fas fa-camera feature-icon"></i>
+                <!-- <div class="feature-image"></div> -->
+                <h3>Free Receipt Scanning</h3>
+                <p>Say goodbye to manual entry, just snap a photo and let us handle the rest.</p>
+            </div>
+        </div>
+        <div class="col-md-4 feature-item">
+            <div class="text-center">
+                <i class="fas fa-balance-scale feature-icon"></i>
+                <!-- <div class="feature-image"></div> -->
+                <h3>Transparent Balance Tracking</h3>
+                <p>Always know who owes what, so there are no surprises or awkward moments.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container mt-5">
+  <h2 class="text-center mb-4">What Our Users Say</h2>
+
+  <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+    {% for testimonial in testimonials %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+        <div class="testimonial">
+            <p class="quote">{{ testimonial.quote }}</p>
+            <p class="author">- {{ testimonial.author }}</p>
+        </div>
+        </div>
+    {% endfor %}
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+    </button>
+</div> 
+</section>
+<section class="container mt-5 text-center">
+  <h3>Ready to Simplify Your Shared Expenses?</h3>
+  <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Sign Up Free</a>
+</section>
+
+{% endblock %}

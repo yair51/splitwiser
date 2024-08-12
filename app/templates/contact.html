@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Contact Us{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8"> <span> </span>
+            <h1 class="text-center mb-4">Get in Touch</h1>
+            <p class="text-center">Email: <a href="mailto:info@splitwiser.com">info@splitsiwer.com</a></p>
+            <p class="text-center">
+                We're here to help! Whether you have a question, feedback, or just want to say hello, feel free to reach out.
+            </p>
+
+            <form method="POST" action="">  {# Replace with your actual form submission endpoint #}
+                <div class="mb-3">
+                <label for="name" class="form-label">Your Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="mb-3">
+                <label for="email" class="form-label">Your Email</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+                </div>
+                <div class="mb-3">
+                <label for="subject" class="form-label">Subject</label>
+                <select class="form-select" id="subject" name="subject">
+                    <option value="general">General Inquiry</option>
+                    <option value="feedback">Feedback</option>
+                    <option value="support">Support</option>
+                    <option value="other">Other</option>
+                </select>
+                </div>
+                <div class="mb-3">
+                <label for="message" class="form-label">Your Message</label>
+                <textarea class="form-control" id="message" name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </form>
+
+            <div class="mt-5">
+                <h2>Frequently Asked Questions</h2>
+                <div class="accordion" id="faqAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        How do I create a group?
+                    </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        To create a group, click on the "Create a New Group" button on your dashboard. You'll be prompted to enter a group name and an optional description. Once created, you can invite others to join your group.
+                    </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        How do I add an expense?
+                    </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        Go to the group you want to add an expense to. Click the "Add Expense" button. You can either upload a receipt or manually enter the expense details. Make sure to select the participants who are sharing the expense.
+                    </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                        How does Splitwiser calculate balances?
+                    </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        Splitwiser uses a sophisticated algorithm to calculate balances based on the expenses and participants in each group. You can see the detailed breakdown of balances on the group details page.
+                    </div>
+                    </div>
+                </div>
+                </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
