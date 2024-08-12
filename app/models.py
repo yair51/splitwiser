@@ -2,10 +2,10 @@ from flask_login import UserMixin
 from . import db
 from enum import Enum
 
-class RecurrenceFrequency(Enum):
-   ONCE_A_WEEK = "once_a_week"
-   ONCE_EVERY_TWO_WEEKS = "once_every_two_weeks"
-   ONCE_A_MONTH = "once_a_month"
+# class RecurrenceFrequency(Enum):
+#    ONCE_A_WEEK = "once_a_week"
+#    ONCE_EVERY_TWO_WEEKS = "once_every_two_weeks"
+#    ONCE_A_MONTH = "once_a_month"
 
 
 # Association table for the many-to-many relationship between User and Group
@@ -60,8 +60,8 @@ class Expense(db.Model):
     paid_by = db.relationship('User', foreign_keys=[paid_by_id])  # User who paid for an expense
     participants = db.relationship(
         'User', secondary=expense_participants, backref=db.backref('expenses', lazy='dynamic'))
-    is_recurring = db.Column(db.Boolean, default=False)
-    recurrence_frequency = db.Column(db.Enum(RecurrenceFrequency), nullable=True)
+    # is_recurring = db.Column(db.Boolean, default=False)
+    # recurrence_frequency = db.Column(db.Enum(RecurrenceFrequency), nullable=True)
 
 
     def __repr__(self):
