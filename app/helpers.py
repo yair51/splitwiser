@@ -43,12 +43,12 @@ def send_email(subject, recipients, template, **kwargs):
 def extract_data_from_receipt(image_data, language="eng", prompt_language="English"):
     """Extract data from receipt image using OCR and LLM."""
 
-
+    text = ""
 
     # Extract text using Tesseract OCR with the detected language
     try:
         text = pytesseract.image_to_string(image_data, lang=language)
-        # print(text)
+        print(text)
     except pytesseract.TesseractError as e:
         print("Error")
     prompt = (f"Extract items and their prices from the following receipt text in {language}. "
