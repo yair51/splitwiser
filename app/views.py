@@ -196,27 +196,30 @@ def delete_expense(expense_id):
     return redirect(url_for('views.group_details', group_id=group.id))
 
 
+
 def calculate_balances(group):
-    """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
+    """
+    Calculates the balances for each member in the given group.
+    
+    Returns a dictionary where keys are user IDs and values are their balances (positive if owed, negative if owing).
+    """
 
     balances = {member.id: 0 for member in group.members}
 
     for expense in group.expenses:
-        num_participants = len(expense.participants)
+        total_participants = len(expense.participants)  # No need to add 1 for the payer
+        share_per_person = expense.amount / total_participants
 
-        # Check for zero participants (shouldn't happen, but it's a good safety measure)
-        if num_participants == 0:
-            print(f"Expense {expense.id} has no participants. Skipping.")  
-            continue  # Skip this expense
-        
-        share_per_participant = expense.amount / num_participants
+        # Deduct the payer's share from their balance
+        balances[expense.paid_by.id] -= share_per_person
 
+        # Add the share to each participant's balance (excluding the payer)
         for participant in expense.participants:
-            balances[participant.id] -= share_per_participant
-
-        balances[expense.paid_by_id] += expense.amount
+            if participant != expense.paid_by:  # Exclude the payer
+                balances[participant.id] += share_per_person
 
     return balances
+
 
 
 
