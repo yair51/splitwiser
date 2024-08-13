@@ -15,7 +15,6 @@ import pillow_heif
 import pytesseract
 
 
-
 views = Blueprint('views', __name__)
 
 
@@ -138,40 +137,6 @@ def get_group_expenses(group_id):
 
     return jsonify({"expenses": expenses_data})
 
-# @views.route('/group/<int:group_id>')
-# @login_required
-# def group_details(group_id):
-#     group = Group.query.get_or_404(group_id)
-
-#     # Check if the user is a member of the group
-#     if current_user not in group.members:
-#         abort(403)
-
-#     # Paginates the expenses
-#     page = request.args.get('page', 1, type=int)
-#     expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.date.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
-
-#     expenses_data = [
-#         {
-#             "id": expense.id,
-#             "description": expense.description,
-#             "amount": expense.amount,
-#             "date": expense.date.strftime('%Y-%m-%d'),
-#             "paid_by": {
-#                 "first_name": expense.paid_by.first_name,
-#                 "last_name": expense.paid_by.last_name
-#             },
-#             "participants": [
-#                 {
-#                     "first_name": participant.first_name,
-#                     "last_name": participant.last_name
-#                 } for participant in expense.participants
-#             ]
-#         } for expense in expenses.items
-#     ]
-
-#     return jsonify({"expenses": expenses_data})
-
 
 
 @views.route('/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
@@ -231,28 +196,6 @@ def delete_expense(expense_id):
     return redirect(url_for('views.group_details', group_id=group.id))
 
 
-# @views.route('/group/<int:group_id>')
-# @login_required
-# def group_details(group_id):
-#     group = Group.query.get_or_404(group_id)
-
-#     # Check if the user is a member of the group
-#     if current_user not in group.members:
-#         abort(403)  # Forbidden access
-
-#     # Get expenses for the group
-#     expenses = group.expenses
-#     # expenses = reversed(expenses)
-#     # print("expense type", type(expenses))
-#     # for expense in expenses:
-#     #     print(expense)
-#     # reversed_expenses = expenses[::-1]  # Reverse the order to show the latest expenses first
-
-#     # Calculate balances (you'll need to implement this based on your chosen algorithm)
-#     balances = calculate_balances(group)
-
-    return render_template('group.html', group=group, expenses=expenses, balances=balances)
-
 def calculate_balances(group):
     """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
 
@@ -274,7 +217,6 @@ def calculate_balances(group):
         balances[expense.paid_by_id] += expense.amount
 
     return balances
-
 
 
 
@@ -306,6 +248,8 @@ def invite_to_group(group_id):
 
     return render_template('invite_to_group.html', group=group)
 
+
+# Handle invitation acceptance
 @views.route('/join/<token>')
 def join_group(token):
     # Get the invitation and group
@@ -378,7 +322,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'heic'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 
 
@@ -551,57 +494,6 @@ def update_settings():
 
     return render_template('settings.html')
 
-# @views.route('/group/<int:group_id>/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
-# @login_required
-# def edit_expense(group_id, expense_id):
-#     group = Group.query.get_or_404(group_id)
-#     expense = Expense.query.get_or_404(expense_id)
-
-#     # Authorization check: Ensure the current user is a member of the group and 
-#     #  is either the payer or an admin (you'll need to define admin logic)
-#     if current_user not in group.members or (expense.paid_by != current_user): 
-#         abort(403)  # Forbidden access
-
-#     if request.method == 'POST':
-#         try:
-#             form_data = request.form  
-#             expense.description = form_data.get('description')
-#             expense.amount = float(form_data.get('amount'))
-
-#             # Update participants
-#             participant_ids = [int(p_id) for p_id in form_data.getlist('participants')]
-#             expense.participants = User.query.filter(User.id.in_(participant_ids)).all()
-
-#             db.session.commit()
-
-#             # Recalculate balances for the group after updating the expense
-#             calculate_balances(expense.group)
-
-#             flash('Expense updated successfully!', 'success')
-#             jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
-
-#         except ValueError:  # Handle potential conversion errors (e.g., if 'amount' is not a valid float)
-#             flash('Invalid input. Please check the amount.', 'error')
-
-#     return redirect(url_for('views.group_details', group_id=group_id))
-
-
-# @views.route('/api/expense/<int:expense_id>', methods=['DELETE'])
-# @login_required
-# def delete_expense(expense_id):
-#     expense = Expense.query.get_or_404(expense_id)
-#     group_id = expense.group_id  # Store the group ID before deleting
-#     group = Group.query.get_or_404(group_id)
-#     if current_user not in group.members or (expense.paid_by != current_user): 
-#         abort(403)  # Forbidden access
-#     if request.method == 'DELETE':
-#         db.session.delete(expense)
-#         db.session.commit()
-#         # Recalculate balances for the group after deleting the expense
-#         calculate_balances(Group.query.get(group_id))  # Fetch the group again after deletion
-#         return jsonify({"success": True})
-#     return redirect(url_for('views.group_details', group_id=group_id))
-#     # ... (handle other methods or errors if needed)
 
 
 @views.route('/api/group/<int:group_id>/balance')
