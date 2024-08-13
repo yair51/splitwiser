@@ -48,9 +48,9 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
     # Extract text using Tesseract OCR with the detected language
     try:
         text = pytesseract.image_to_string(image_data, lang=language)
-        print(text)
+        print("OCR text", text)
     except pytesseract.TesseractError as e:
-        print("Error")
+        print("Error with OCR extraction: ", e)
     prompt = (f"Extract items and their prices from the following receipt text in {language}. "
             f"If an item name appears to be misspelled and you are confident about the correction, correct the spelling."
             f"Ensure that you capture the item name and price accurately:\n\n"
@@ -71,9 +71,11 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
                 {"role": "system", "content": "You are an AI assistant that helps extract structured data from receipt text."},
                 {"role": "user", "content": prompt},
             ],
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
         )
         response = response.choices[0].message.content
+
+        print("Response from GPT:", response)
 
         # remove json formatting information if present
         cleaned_response = response.strip('```json').strip('```')

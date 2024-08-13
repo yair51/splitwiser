@@ -473,7 +473,6 @@ def upload_receipt():
             # Correct the orientation based on EXIF data (common issue with mobile photos)
             try:
                 for orientation in ExifTags.TAGS.keys():
-                    print("orientation")
                     if ExifTags.TAGS[orientation] == 'Orientation':
                         break
                 exif = img.getexif()
@@ -489,8 +488,6 @@ def upload_receipt():
             except (AttributeError, KeyError, IndexError):
                 # Cases: image don't have getexif
                 pass
-        # image_data = file.read()
-        # img = Image.open(io.BytesIO(image_data))
         extracted_data = extract_data_from_receipt(img, language, prompt_language)
         print(extracted_data)
         return jsonify({"success": True, "items": extracted_data['items']})
@@ -514,9 +511,9 @@ def get_expenses(group_id):
            'description': expense.description,
            'amount': expense.amount,
            'date': expense.date.strftime('%Y-%m-%d'),
-           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
-           'is_recurring': expense.is_recurring,
-           'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
+           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name
+        #    'is_recurring': expense.is_recurring,
+        #    'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
        } for expense in expenses
    ]
   
