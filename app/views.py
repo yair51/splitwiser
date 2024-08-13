@@ -208,6 +208,8 @@ def calculate_balances(group):
 
     for expense in group.expenses:
         total_participants = len(expense.participants)  # No need to add 1 for the payer
+        if total_participants == 0:
+            continue  # Skip expenses with no participants
         share_per_person = expense.amount / total_participants
 
         # Deduct the payer's share from their balance
