@@ -12,6 +12,7 @@ import io
 from PIL import Image, ExifTags
 import io
 import pillow_heif
+import pytesseract
 
 
 
@@ -287,6 +288,11 @@ def allowed_file(filename):
 def add_expense(group_id):
     group = Group.query.get_or_404(group_id)
 
+    available_languages = pytesseract.get_languages(config='')
+
+
+    print(available_languages)
+
     # Check if user is a member of the group
     if current_user not in group.members:
         abort(403)  # Forbidden access
@@ -439,6 +445,8 @@ def upload_receipt():
         prompt_language = "Hebrew"
     elif language == 'eng':  # English
         prompt_language = "English"
+    elif language == 'nor':
+        prompt_language = "Norwegian"
     else:
         prompt_language = "the language in the text"
 
