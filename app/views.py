@@ -20,7 +20,6 @@ views = Blueprint('views', __name__)
 
 
 @views.route('/')
-@login_required
 def index():
     # Sample testimonials data (replace with your actual data)
     testimonials = [
@@ -83,27 +82,142 @@ def create_group():
 
 
 
+ITEMS_PER_PAGE = 10 
+
+
 @views.route('/group/<int:group_id>')
 @login_required
 def group_details(group_id):
     group = Group.query.get_or_404(group_id)
 
-    # Check if the user is a member of the group
     if current_user not in group.members:
+        abort(403)
+
+    page = request.args.get('page', 1, type=int) 
+    expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.id.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
+
+    balances = calculate_balances(group)
+    return render_template(
+        'group2.html', 
+        group=group, 
+        expenses=expenses, 
+        balances=balances,
+        more_expenses=expenses.has_next
+    )
+
+@views.route('/group/<int:group_id>/expenses')
+@login_required
+def get_group_expenses(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    if current_user not in group.members:
+        abort(403)
+
+    # Paginates the expenses
+    page = request.args.get('page', 1, type=int)
+    expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.date.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
+
+    expenses_data = [
+        {
+            "id": expense.id,
+            "description": expense.description,
+            "amount": expense.amount,
+            "date": expense.date.strftime('%Y-%m-%d'),
+            "paid_by": {
+                "first_name": expense.paid_by.first_name,
+                "last_name": expense.paid_by.last_name
+            },
+            "participants": [
+                {
+                    "first_name": participant.first_name,
+                    "last_name": participant.last_name
+                } for participant in expense.participants
+            ]
+        } for expense in expenses.items
+    ]
+
+    return jsonify({"expenses": expenses_data})
+
+
+
+@views.route('/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+    group = expense.group
+
+    # Check if the user is a member of the group and the one who paid for the expense
+    if (current_user not in group.members):
         abort(403)  # Forbidden access
 
-    # Get expenses for the group
-    expenses = group.expenses
-    # expenses = reversed(expenses)
-    # print("expense type", type(expenses))
-    # for expense in expenses:
-    #     print(expense)
-    # reversed_expenses = expenses[::-1]  # Reverse the order to show the latest expenses first
+    if request.method == 'POST':
+        description = request.form['description']
+        amount = float(request.form['amount'])
+        participant_ids = [int(p) for p in request.form.getlist('participants')]
 
-    # Calculate balances (you'll need to implement this based on your chosen algorithm)
-    balances = calculate_balances(group)
+        # Basic validation (you can add more as needed)
+        if not description or amount <= 0:
+            flash('Please enter a valid description and amount.', 'danger')
+            return redirect(url_for('views.edit_expense', expense_id=expense_id))
 
-    return render_template('group.html', group=group, expenses=expenses, balances=balances)
+        print(description)
+        # Update expense details
+        expense.description = description
+        expense.amount = amount
+
+        # Update participants
+        expense.participants = []
+        for participant_id in participant_ids:
+            participant = User.query.get(participant_id)
+            if participant and participant in group.members: 
+                expense.participants.append(participant)
+
+        db.session.commit()
+        flash('Expense updated successfully!', 'success')
+        return redirect(url_for('views.group_details', group_id=group.id))
+
+    return render_template('edit_expense_modal.html', expense=expense, group=group) 
+
+
+
+@views.route('/expense/<int:expense_id>/delete', methods=['POST']) 
+@login_required
+def delete_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+
+    group = expense.group
+
+    # Check if the user is a member of the group and the one who paid for the expense
+    if (current_user not in group.members) or (expense.paid_by != current_user):
+        abort(403) 
+
+    db.session.delete(expense)
+    db.session.commit()
+    flash('Expense deleted successfully!', 'success')
+    return redirect(url_for('views.group_details', group_id=group.id))
+
+
+# @views.route('/group/<int:group_id>')
+# @login_required
+# def group_details(group_id):
+#     group = Group.query.get_or_404(group_id)
+
+#     # Check if the user is a member of the group
+#     if current_user not in group.members:
+#         abort(403)  # Forbidden access
+
+#     # Get expenses for the group
+#     expenses = group.expenses
+#     # expenses = reversed(expenses)
+#     # print("expense type", type(expenses))
+#     # for expense in expenses:
+#     #     print(expense)
+#     # reversed_expenses = expenses[::-1]  # Reverse the order to show the latest expenses first
+
+#     # Calculate balances (you'll need to implement this based on your chosen algorithm)
+#     balances = calculate_balances(group)
+
+#     return render_template('group2.html', group=group, expenses=expenses, balances=balances)
 
 def calculate_balances(group):
     # ... (Your balance calculation logic here)
@@ -119,63 +233,6 @@ def calculate_balances(group):
         )
     return balances
 
-
-
-# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
-# @login_required
-# def add_expense(group_id):
-#     group = Group.query.get_or_404(group_id)
-
-#     # Check if the user is a member of the group
-#     if current_user not in group.members:
-#         abort(403)  # Forbidden access
-
-#     if request.method == 'POST':
-#         description = request.form['description']
-#         amount = float(request.form['amount'])
-#         paid_by_id = current_user.id  # The currently logged-in user paid the expense
-#         is_recurring = request.form.get('is_recurring') == 'on'  # Convert to boolean
-#         recurrence_frequency = RecurrenceFrequency(request.form.get('recurrence_frequency')) if is_recurring else None
-
-
-#         # Basic input validation (you can add more as needed)
-#         if not description or amount <= 0:
-#             flash('Please enter a valid description and amount.', 'danger')
-#             return render_template('add_expense.html', group=group)
-
-#         new_expense = Expense(
-#             description=description,
-#             amount=amount,
-#             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
-#             group_id=group_id,
-#             paid_by_id=paid_by_id,
-#             is_recurring=is_recurring,
-#             recurrence_frequency=recurrence_frequency
-#         )
-#         db.session.add(new_expense)
-#         db.session.commit()
-
-
-
-#         # Basic input validation (you can add more as needed)
-#         if not description or amount <= 0:
-#             flash('Please enter a valid description and amount.', 'danger')
-#             return render_template('add_expense.html', group=group)
-
-#         new_expense = Expense(
-#             description=description,
-#             amount=amount,
-#             date=datetime.datetime.utcnow(),  # Use UTC time for consistency
-#             group_id=group_id,
-#             paid_by_id=paid_by_id
-#         )
-#         db.session.add(new_expense)
-#         db.session.commit()
-
-#         flash('Expense added successfully!', 'success')
-#         return redirect(url_for('views.group_details', group_id=group_id))
-
-#     return render_template('add_expense.html', group=group)
 
 
 
@@ -330,104 +387,6 @@ def add_expense(group_id):
         return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
 
     return render_template('add_expense.html', group=group)
-
-
-
-# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
-# @login_required
-# def add_expense(group_id):
-    # group = Group.query.get_or_404(group_id)
-
-#     # Check if user is a member of the group
-#     if current_user not in group.members:
-#         abort(403)  # Forbidden access
-
-#     if request.method == 'POST':
-#         item_data = request.get_json()['items']  # Get items as JSON array
-#         print(item_data)
-
-#         for item in item_data:
-#             description = item["name"]
-#             amount = float(item["price"])
-#             participant_ids = [int(p) for p in item.get("participants", [])]
-#             # ... (Add error handling for invalid data here)
-
-#             # Create the Expense object
-#             expense = Expense(
-#                 description=description,
-#                 amount=amount,
-#                 date=datetime.utcnow(),
-#                 group=group,
-#                 paid_by=current_user  
-#             )
-
-#             # Associate participants with the expense
-#             if participant_ids:  # If participants are selected
-#                 for participant_id in participant_ids:
-#                     participant = User.query.get(participant_id)
-#                     if participant:  # Check if user exists (for security)
-#                         expense.participants.append(participant)
-
-#             db.session.add(expense)
-
-#         db.session.commit()
-
-#         flash('Expense(s) added successfully!', 'success')
-#         return redirect(url_for('views.group_details', group_id=group_id))
-
-#     return render_template('add_expense.html', group=group)
-
-# @views.route('/group/<int:group_id>/add_expense', methods=['GET', 'POST'])
-# @login_required
-# def add_expense(group_id):
-#     group = Group.query.get_or_404(group_id)
-
-#     # Check if the user is a member of the group
-#     if current_user not in group.members:
-#         abort(403)  # Forbidden access
-
-#     # if request.method == 'POST':
-#     #     # Extract items if receipt image is uploaded
-#     #     receipt_image = request.files.get('receipt_image')
-#     #     if receipt_image and allowed_file(receipt_image.filename):
-#     #         try:
-#     #             image_data = receipt_image.read()
-#     #             img = Image.open(io.BytesIO(image_data))
-#     #             extracted_items = extract_data_from_receipt(img)["items"]  # Extract items from the receipt
-#     #         except Exception as e:
-#     #             current_app.logger.error("Error extracting items from receipt: %s", e)
-#     #             flash('Failed to extract items from the receipt.', 'danger')
-#     #             return render_template('add_expense.html', group=group)
-#     #     else:
-#     #         # Get items from manual input (JSON array)
-#     #         extracted_items = json.loads(request.form.get("item_data", "[]"))
-
-
-#     #     # Create expenses based on the extracted/input items
-#     #     for item_data in extracted_items:
-#     #         item_name = item_data["name"]
-#     #         item_price = float(item_data["price"])
-#     #         # participant_ids = item_data.get("participants", [])  # Assuming a list of user IDs
-
-#     #         print(item_data)
-#     #         # Create the Expense object
-#     #         new_expense = Expense(
-#     #             description=item_name,
-#     #             amount=item_price,
-#     #             date=datetime.datetime.utcnow(),
-#     #             group_id=group_id,
-#     #             paid_by=current_user,
-#     #             # participants=[User.query.get(int(user_id)) for user_id in participant_ids if User.query.get(int(user_id)) in group.members]
-#     #         )
-
-#     #         db.session.add(new_expense)
-
-#     #     db.session.commit()
-
-#     #     flash('Expense(s) added successfully!', 'success')
-#     #     return redirect(url_for('views.group_details', group_id=group_id))
-
-#     return render_template('add_expense.html', group=group)
     
 
 

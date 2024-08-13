@@ -1,0 +1,36 @@
+<div class="modal fade" id="editExpenseModal-{{ expense.id }}" tabindex="-1" aria-labelledby="editExpenseModalLabel-{{ expense.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"> {/* Center the modal */}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editExpenseModalLabel-{{ expense.id }}">Edit Expense</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editExpenseForm-{{ expense.id }}" method="POST" action="{{ url_for('views.edit_expense', expense_id=expense.id) }}">
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <input type="text" class="form-control" id="description" name="description" value="{{ expense.description }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="amount" class="form-label">Amount</label>
+              <input type="number" class="form-control" id="amount" name="amount" value="{{ expense.amount }}" step="0.01" min="0.01" required>
+            </div>
+            <div class="mb-3">
+              <label for="participants" class="form-label">Participants</label>
+              {% for member in group.members %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="participants" value="{{ member.id }}" id="participant-{{ member.id }}" 
+                       {% if member in expense.participants %}checked{% endif %}>
+                <label class="form-check-label" for="participant-{{ member.id }}">
+                  {{ member.first_name }} {{ member.last_name }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  

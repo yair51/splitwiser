@@ -67,6 +67,13 @@ class Expense(db.Model):
     def __repr__(self):
         return f'<Expense {self.description}: {self.amount}>'
     
+    
+    def formatted_amount(self):
+        """
+        Returns the expense amount formatted to two decimal places.
+        """
+        return f"{self.amount:.2f}"  # Use f-string formatting
+    
 
 
 class Invitation(db.Model):

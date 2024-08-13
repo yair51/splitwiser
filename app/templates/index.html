@@ -5,128 +5,139 @@
 
 <style>
 /* Color Scheme: */
-/* Primary: #007bff (Bootstrap's default blue) - Maintains consistency with the navbar */
-/* Secondary: #28a745 (Bootstrap's success green) - Conveys positive financial outcomes */
-/* Accent: #ffc107 (Bootstrap's warning yellow) - Adds a touch of vibrancy and attention */
-/* Neutral: #f8f9fa (Bootstrap's light gray) - Provides a clean background */
+/* Primary: #007bff (Bootstrap's default blue) */
+/* Secondary: #2ecc71 (Emerald Green) */
+/* Accent: #f39c12 (Vibrant Orange) */
+/* Neutral: #f5f5f5 (Light Gray) */
+/* Text: #333 (Dark Gray) */
 
-.body {
-    background-color: purple; /* Neutral background */
+body {
+  background-color: #f5f5f5; /* Light gray background for the entire page */
 }
 
-
 .hero {
-    padding: 80px 0;
-    text-align: center;
+  background-color: #e0f7fa; /* Light Teal background for hero */
+  padding: 80px 0;
+  text-align: center;
+  border-radius: 10px; /* Add rounded corners to the hero section */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Add a subtle shadow */
 }
 
 .hero h1 {
-    font-size: 4rem; /* Larger headline */
-    color: #333;
-    margin-bottom: 20px;
+  font-size: 4rem;
+  color: #333;
+  margin-bottom: 20px;
 }
 
 .hero .lead {
-    font-size: 1.25rem; /* Slightly larger lead text */
-    margin-bottom: 30px;
+  font-size: 1.25rem;
+  color: #6c757d;
+  margin-bottom: 30px;
 }
 
 .hero .btn-primary {
-    background-color: #28a745; /* Secondary color for CTA */
-    border-color: #28a745;
+  background-color: #2ecc71; 
+  border-color: #2ecc71;
 }
 
 .hero .btn-primary:hover {
-    background-color: #218838; /* Darker shade on hover */
-    border-color: #1e7e34;
+  background-color: #27ae60;
+  border-color: #218838;
 }
 
 .feature-section {
-    padding: 50px 0;
+  padding: 50px 0;
 }
 
 .feature-icon {
-    font-size: 4rem; /* Larger icon */
-    color: #007bff; /* Primary color for icons */
-    margin-bottom: 20px;
+  font-size: 4rem;
+  color: #3498db; 
+  margin-bottom: 20px;
 }
 
-.feature-image {
-    height: 200px; /* Placeholder image height */
-    background-color: #eee; /* Light gray background for placeholder */
-    border-radius: 5px;
-    margin-bottom: 20px;
+.feature-card {
+  background-color: #fff; 
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
 }
 
+.feature-section h2 {
+  font-weight: 700; 
+  color: #f39c12;  
+  margin-bottom: 30px;
+}
 
 .testimonial {
-    border: 1px solid #ddd;
-    padding: 30px;
-    border-radius: 25px;
-    text-align: center; /* Center testimonial content */
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 30px;
+  border-radius: 5px;
+  text-align: center; 
 }
 
 .testimonial .quote {
-    font-size: 1.5rem; /* Larger quote text */
-    font-style: italic;
-    margin-bottom: 15px;
+  font-size: 1.5rem; 
+  font-style: italic;
+  margin-bottom: 15px;
 }
 
 .testimonial .author {
-    font-weight: bold;
-    color: #28a745; /* Secondary color for author name */
+  font-weight: bold;
+  color: #2ecc71; 
 }
 
-
-.hero, .feature-row, .testimonial {
-    background-color: #EEEEEE;
-    border-radius: 25px;
+/* Fix for carousel not showing */
+.carousel-inner {
+  height: 300px; 
 }
-
-.row {
-    padding: 50px 0;
-}
-
 </style>
 
 <section class="hero">
-    <div class="container">
-        <h1>Split Expenses, Not Friendships</h1>
-        <p class="lead">Effortless expense tracking for groups and roommates.</p>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Sign Up Free</a>
-    </div>
+  <div class="container">
+    <h1>Split Expenses, Not Friendships</h1>
+    <p class="lead">Effortless expense tracking for groups and roommates.</p>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Sign Up Free</a>
+  </div>
 </section>
 
 <section class="container feature-section">
-    <div class="row feature-row">
-        <div class="col-md-4 feature-item">
-            <div class="text-center">
-                <i class="fas fa-file-invoice-dollar feature-icon"></i>
-                <!-- <div class="feature-image"></div> -->
-                <h3>Effortless Expense Tracking</h3>
-                <p>Easily add and split expenses, no more mental math or spreadsheets.</p>
-            </div>
+  <div class="row">
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="text-center d-flex flex-column h-100">
+          <i class="fas fa-file-invoice-dollar feature-icon"></i>
+          <div class="feature-image"></div> 
+          <h3>Effortless Expense Tracking</h3>
+          <p>Easily add and split expenses, no more mental math or spreadsheets.</p>
         </div>
-        <div class="col-md-4 feature-item">
-            <div class="text-center">
-                <i class="fas fa-camera feature-icon"></i>
-                <!-- <div class="feature-image"></div> -->
-                <h3>Free Receipt Scanning</h3>
-                <p>Say goodbye to manual entry, just snap a photo and let us handle the rest.</p>
-            </div>
-        </div>
-        <div class="col-md-4 feature-item">
-            <div class="text-center">
-                <i class="fas fa-balance-scale feature-icon"></i>
-                <!-- <div class="feature-image"></div> -->
-                <h3>Transparent Balance Tracking</h3>
-                <p>Always know who owes what, so there are no surprises or awkward moments.</p>
-            </div>
-        </div>
+      </div>
     </div>
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="text-center d-flex flex-column h-100">
+          <i class="fas fa-camera feature-icon"></i>
+          <div class="feature-image"></div>
+          <h3>Free Receipt Scanning</h3>
+          <p>Say goodbye to manual entry, just snap a photo and let us handle the rest.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card h-100">
+            <div class="text-center d-flex flex-column h-100">
+          <i class="fas fa-balance-scale feature-icon"></i>
+          <div class="feature-image"></div>
+          <h3>Transparent Balance Tracking</h3>
+          <p>Always know who owes what, so there are no surprises or awkward moments.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section class="container mt-5">
+<section class="container mt-0">
   <h2 class="text-center mb-4">What Our Users Say</h2>
 
   <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
@@ -144,15 +155,16 @@
     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     <span class="visually-hidden">Previous</span>
     </button>
-    <button class="carousel-control-next" type="button" data-bs-slide="next">
+    <button class="carousel-control-next" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="next">
     <span class="carousel-control-next-icon" aria-hidden="true"></span>
     <span class="visually-hidden">Next</span>
     </button>
 </div> 
 </section>
-<section class="container mt-5 text-center">
+
+<!-- <section class="container mt-0 text-center">
   <h3>Ready to Simplify Your Shared Expenses?</h3>
   <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Sign Up Free</a>
-</section>
+</section> -->
 
 {% endblock %}
