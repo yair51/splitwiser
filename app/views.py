@@ -63,7 +63,8 @@ def group_details(group_id):
     # Calculate balances (you'll need to implement this based on your chosen algorithm)
     balances = calculate_balances(group)
 
-    return render_template('group.html', group=group, expenses=expenses, balances=balances)
+    settlements = calculate_optimal_settlements(balances)
+    return render_template('group.html', group=group, expenses=expenses, balances=balances, settlements=settlements)
 
 def calculate_balances(group):
     """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
@@ -528,3 +529,108 @@ def get_group_balance(group_id):
     user_balance = balances.get(current_user.id, 0)  # Get balance for current user or default to 0
 
     return jsonify({'balance': user_balance})
+
+def get_user_name_by_id(user_id):
+    """Helper function to get the full name of a user by their ID."""
+    user = User.query.get(user_id)
+    return f"{user.first_name} {user.last_name}" if user else "Unknown User"
+
+def calculate_optimal_settlements(balances):
+    """
+    Calculates optimal settlements, preserving user IDs and minimizing transactions.
+    """
+
+    # Create lists of tuples (user_id, balance) for positive and negative balances
+    positive_balances = [(user_id, balance) for user_id, balance in balances.items() if balance > 0]
+    negative_balances = [(user_id, balance) for user_id, balance in balances.items() if balance < 0]
+
+    settlements = []
+    while positive_balances and negative_balances:
+        # Get the user with the highest positive balance and the user with the lowest negative balance
+        payer_id, payer_balance = max(positive_balances, key=lambda x: x[1])
+        payee_id, payee_balance = min(negative_balances, key=lambda x: x[1])
+
+        amount_to_settle = min(payer_balance, -payee_balance)
+        settlements.append((payer_id, get_user_name_by_id(payer_id), payee_id, get_user_name_by_id(payee_id), amount_to_settle))
+
+        # Update the balances without removing entries
+        positive_balances = [(uid, bal - amount_to_settle if uid == payer_id else bal) for uid, bal in positive_balances]
+        negative_balances = [(uid, bal + amount_to_settle if uid == payee_id else bal) for uid, bal in negative_balances]
+
+        # Remove entries with zero balance
+        positive_balances = [(uid, bal) for uid, bal in positive_balances if bal != 0]
+        negative_balances = [(uid, bal) for uid, bal in negative_balances if bal != 0]
+
+    return settlements
+
+
+def update_balances_for_settled_user(group, user_id):
+    """
+    Updates the database and creates settlement expenses.
+    """
+
+    balances = calculate_balances(group)
+    settlements = calculate_optimal_settlements(balances)
+
+    for payer_id, payer_name, payee_id, payee_name, amount in settlements:
+        if payer_id == user_id or payee_id == user_id:
+            # Create a new "settlement" expense
+            settlement_expense = Expense(
+                description=f"Settlement from {payer_name} to {payee_name}",
+                amount=amount,
+                date=datetime.datetime.utcnow().date(),
+                group_id=group.id,
+                paid_by_id=payer_id,
+                settled=True
+            )
+
+            # Associate only the payer and payee with this settlement expense
+            settlement_expense.participants.append(User.query.get(payer_id))
+            settlement_expense.participants.append(User.query.get(payee_id))
+
+            db.session.add(settlement_expense)
+
+    db.session.commit()
+
+@views.route('/api/group/<int:group_id>/settle_up', methods=['POST'])
+@login_required
+def settle_up(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        abort(403)  # Forbidden access
+
+    try:
+        balances = calculate_balances(group)
+        settlements = calculate_optimal_settlements(balances)
+
+        # Optimization: Fetch all required users in one query (if not already done in calculate_balances)
+        user_ids = set(balances.keys()) 
+        all_users = {user.id: user for user in User.query.filter(User.id.in_(user_ids)).all()}
+
+        for payer_id, payer_name, payee_id, payee_name, amount in settlements:
+            if payer_id == current_user.id: 
+                continue
+
+            if payee_id == current_user.id and amount > 0:
+                # Create a new "settlement" expense (use payer_name and payee_name)
+                settlement_expense = Expense(
+                    description=f"Settlement to {payer_name}",
+                    amount=amount,
+                    date=datetime.datetime.utcnow().date(),
+                    group_id=group_id,
+                    paid_by_id=current_user.id
+                )
+
+                settlement_expense.participants.append(all_users[payer_id])
+                db.session.add(settlement_expense)
+
+        db.session.commit()
+
+        # Recalculate balances after settlements
+        calculate_balances(group)
+        flash('Account Settled!', 'success')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "An error occurred while settling up."}), 500
