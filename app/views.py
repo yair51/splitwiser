@@ -138,6 +138,40 @@ def get_group_expenses(group_id):
 
     return jsonify({"expenses": expenses_data})
 
+# @views.route('/group/<int:group_id>')
+# @login_required
+# def group_details(group_id):
+#     group = Group.query.get_or_404(group_id)
+
+#     # Check if the user is a member of the group
+#     if current_user not in group.members:
+#         abort(403)
+
+#     # Paginates the expenses
+#     page = request.args.get('page', 1, type=int)
+#     expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.date.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
+
+#     expenses_data = [
+#         {
+#             "id": expense.id,
+#             "description": expense.description,
+#             "amount": expense.amount,
+#             "date": expense.date.strftime('%Y-%m-%d'),
+#             "paid_by": {
+#                 "first_name": expense.paid_by.first_name,
+#                 "last_name": expense.paid_by.last_name
+#             },
+#             "participants": [
+#                 {
+#                     "first_name": participant.first_name,
+#                     "last_name": participant.last_name
+#                 } for participant in expense.participants
+#             ]
+#         } for expense in expenses.items
+#     ]
+
+#     return jsonify({"expenses": expenses_data})
+
 
 
 @views.route('/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
@@ -217,20 +251,28 @@ def delete_expense(expense_id):
 #     # Calculate balances (you'll need to implement this based on your chosen algorithm)
 #     balances = calculate_balances(group)
 
-#     return render_template('group2.html', group=group, expenses=expenses, balances=balances)
+    return render_template('group.html', group=group, expenses=expenses, balances=balances)
 
 def calculate_balances(group):
-    # ... (Your balance calculation logic here)
-    # For now, you can use a simple equal split calculation
-    total_expenses = sum(expense.amount for expense in group.expenses)
-    num_members = len(group.members)
-    share_per_person = total_expenses / num_members
+    """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
 
-    balances = {}
-    for member in group.members:
-        balances[member.id] = share_per_person - sum(
-            expense.amount for expense in group.expenses if expense.paid_by_id == member.id
-        )
+    balances = {member.id: 0 for member in group.members}
+
+    for expense in group.expenses:
+        num_participants = len(expense.participants)
+
+        # Check for zero participants (shouldn't happen, but it's a good safety measure)
+        if num_participants == 0:
+            print(f"Expense {expense.id} has no participants. Skipping.")  
+            continue  # Skip this expense
+        
+        share_per_participant = expense.amount / num_participants
+
+        for participant in expense.participants:
+            balances[participant.id] -= share_per_participant
+
+        balances[expense.paid_by_id] += expense.amount
+
     return balances
 
 
@@ -475,10 +517,11 @@ def get_expenses(group_id):
    # Convert expenses to dictionaries for JSON serialization
    expense_list = [
        {
+           'id': expense.id,
            'description': expense.description,
-           'amount': expense.amount,
+           'amount': f"{expense.amount:.2f}",
            'date': expense.date.strftime('%Y-%m-%d'),
-           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name
+           'paid_by': expense.paid_by.first_name + ' ' + expense.paid_by.last_name,
         #    'is_recurring': expense.is_recurring,
         #    'recurrence_frequency': expense.recurrence_frequency.value if expense.recurrence_frequency else None,
        } for expense in expenses
@@ -508,3 +551,172 @@ def update_settings():
 
     return render_template('settings.html')
 
+# @views.route('/group/<int:group_id>/expense/<int:expense_id>/edit', methods=['GET', 'POST'])
+# @login_required
+# def edit_expense(group_id, expense_id):
+#     group = Group.query.get_or_404(group_id)
+#     expense = Expense.query.get_or_404(expense_id)
+
+#     # Authorization check: Ensure the current user is a member of the group and 
+#     #  is either the payer or an admin (you'll need to define admin logic)
+#     if current_user not in group.members or (expense.paid_by != current_user): 
+#         abort(403)  # Forbidden access
+
+#     if request.method == 'POST':
+#         try:
+#             form_data = request.form  
+#             expense.description = form_data.get('description')
+#             expense.amount = float(form_data.get('amount'))
+
+#             # Update participants
+#             participant_ids = [int(p_id) for p_id in form_data.getlist('participants')]
+#             expense.participants = User.query.filter(User.id.in_(participant_ids)).all()
+
+#             db.session.commit()
+
+#             # Recalculate balances for the group after updating the expense
+#             calculate_balances(expense.group)
+
+#             flash('Expense updated successfully!', 'success')
+#             jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
+
+#         except ValueError:  # Handle potential conversion errors (e.g., if 'amount' is not a valid float)
+#             flash('Invalid input. Please check the amount.', 'error')
+
+#     return redirect(url_for('views.group_details', group_id=group_id))
+
+
+# @views.route('/api/expense/<int:expense_id>', methods=['DELETE'])
+# @login_required
+# def delete_expense(expense_id):
+#     expense = Expense.query.get_or_404(expense_id)
+#     group_id = expense.group_id  # Store the group ID before deleting
+#     group = Group.query.get_or_404(group_id)
+#     if current_user not in group.members or (expense.paid_by != current_user): 
+#         abort(403)  # Forbidden access
+#     if request.method == 'DELETE':
+#         db.session.delete(expense)
+#         db.session.commit()
+#         # Recalculate balances for the group after deleting the expense
+#         calculate_balances(Group.query.get(group_id))  # Fetch the group again after deletion
+#         return jsonify({"success": True})
+#     return redirect(url_for('views.group_details', group_id=group_id))
+#     # ... (handle other methods or errors if needed)
+
+
+@views.route('/api/group/<int:group_id>/balance')
+@login_required
+def get_group_balance(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        abort(403) 
+
+    balances = calculate_balances(group)
+    user_balance = balances.get(current_user.id, 0)  # Get balance for current user or default to 0
+
+    return jsonify({'balance': user_balance})
+
+def get_user_name_by_id(user_id):
+    """Helper function to get the full name of a user by their ID."""
+    user = User.query.get(user_id)
+    return f"{user.first_name} {user.last_name}" if user else "Unknown User"
+
+def calculate_optimal_settlements(balances):
+    """
+    Calculates optimal settlements, preserving user IDs and minimizing transactions.
+    """
+
+    # Create lists of tuples (user_id, balance) for positive and negative balances
+    positive_balances = [(user_id, balance) for user_id, balance in balances.items() if balance > 0]
+    negative_balances = [(user_id, balance) for user_id, balance in balances.items() if balance < 0]
+
+    settlements = []
+    while positive_balances and negative_balances:
+        # Get the user with the highest positive balance and the user with the lowest negative balance
+        payer_id, payer_balance = max(positive_balances, key=lambda x: x[1])
+        payee_id, payee_balance = min(negative_balances, key=lambda x: x[1])
+
+        amount_to_settle = min(payer_balance, -payee_balance)
+        settlements.append((payer_id, get_user_name_by_id(payer_id), payee_id, get_user_name_by_id(payee_id), amount_to_settle))
+
+        # Update the balances without removing entries
+        positive_balances = [(uid, bal - amount_to_settle if uid == payer_id else bal) for uid, bal in positive_balances]
+        negative_balances = [(uid, bal + amount_to_settle if uid == payee_id else bal) for uid, bal in negative_balances]
+
+        # Remove entries with zero balance
+        positive_balances = [(uid, bal) for uid, bal in positive_balances if bal != 0]
+        negative_balances = [(uid, bal) for uid, bal in negative_balances if bal != 0]
+
+    return settlements
+
+
+def update_balances_for_settled_user(group, user_id):
+    """
+    Updates the database and creates settlement expenses.
+    """
+
+    balances = calculate_balances(group)
+    settlements = calculate_optimal_settlements(balances)
+
+    for payer_id, payer_name, payee_id, payee_name, amount in settlements:
+        if payer_id == user_id or payee_id == user_id:
+            # Create a new "settlement" expense
+            settlement_expense = Expense(
+                description=f"Settlement from {payer_name} to {payee_name}",
+                amount=amount,
+                date=datetime.datetime.utcnow().date(),
+                group_id=group.id,
+                paid_by_id=payer_id,
+                settled=True
+            )
+
+            # Associate only the payer and payee with this settlement expense
+            settlement_expense.participants.append(User.query.get(payer_id))
+            settlement_expense.participants.append(User.query.get(payee_id))
+
+            db.session.add(settlement_expense)
+
+    db.session.commit()
+
+@views.route('/api/group/<int:group_id>/settle_up', methods=['POST'])
+@login_required
+def settle_up(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        abort(403)  # Forbidden access
+
+    try:
+        balances = calculate_balances(group)
+        settlements = calculate_optimal_settlements(balances)
+
+        # Optimization: Fetch all required users in one query (if not already done in calculate_balances)
+        user_ids = set(balances.keys()) 
+        all_users = {user.id: user for user in User.query.filter(User.id.in_(user_ids)).all()}
+
+        for payer_id, payer_name, payee_id, payee_name, amount in settlements:
+            if payer_id == current_user.id: 
+                continue
+
+            if payee_id == current_user.id and amount > 0:
+                # Create a new "settlement" expense (use payer_name and payee_name)
+                settlement_expense = Expense(
+                    description=f"Settlement to {payer_name}",
+                    amount=amount,
+                    date=datetime.datetime.utcnow().date(),
+                    group_id=group_id,
+                    paid_by_id=current_user.id
+                )
+
+                settlement_expense.participants.append(all_users[payer_id])
+                db.session.add(settlement_expense)
+
+        db.session.commit()
+
+        # Recalculate balances after settlements
+        calculate_balances(group)
+        flash('Account Settled!', 'success')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "An error occurred while settling up."}), 500

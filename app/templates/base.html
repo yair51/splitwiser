@@ -82,8 +82,7 @@
                                href="{{ url_for('views.update_settings') }}">Settings</a> 
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'views.contact' %}active{% endif %}" 
-                               href="{{ url_for('views.contact') }}">Contact Us</a> 
+                            <a class="nav-link" href="{{ url_for('views.profile') }}">Profile</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'auth.logout' in request.endpoint %}active{% endif %}" 

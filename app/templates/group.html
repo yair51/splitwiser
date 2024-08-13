@@ -48,13 +48,10 @@
 
  <div class="mb-3 d-flex justify-content-between align-items-start">
    <div>
-    <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-success">
-      Add Expense
-    </a>
       <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" class="btn btn-primary">
          Invite Members
        </a>
-       <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#memberListModal">
+       <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#memberListModal">
         Current Group Members
       </button>
    </div>
@@ -90,19 +87,88 @@
           <th>Amount</th>
           <th>Paid By</th>
           <th>Date</th>
+          <th>Edit Expense</th> 
         </tr>
       </thead>
-      <tbody id="expenseTable"></tbody>
+      <tbody>
+        {% for expense in expenses %}
+          <tr>
+            <td>{{ expense.description }}</td>
+            <td>
+              {% if expense.paid_by == current_user %}
+                <span class="badge bg-success">${{ expense.amount }}</span>
+              {% else %}
+                <span class="badge bg-danger">${{ expense.amount }}</span>
+              {% endif %}
+            </td>
+            <td>{{ expense.paid_by.first_name }} {{ expense.paid_by.last_name }}</td>
+            <td>
+                {% if expense.is_recurring %}
+                    <span class="badge bg-warning">{{ expense.recurrence_frequency }}</span>
+                {% else %}
+                    {{ expense.date.strftime('%Y-%m-%d') }}
+                {% endif %}
+            </td>
+            <td>
+                <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editExpenseModal{{ expense.id }}">
+                    <i class="fas fa-edit"></i>
+                </button> 
+            </td>
+          </tr>
+
+          <div class="modal fade" id="editExpenseModal{{ expense.id }}" tabindex="-1" aria-labelledby="editExpenseModalLabel{{ expense.id }}" aria-hidden="true" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="editExpenseModalLabel{{ expense.id }}">Edit Expense</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="editExpenseForm{{ expense.id }}" method="POST" action="{{ url_for('views.edit_expense', group_id=group.id, expense_id=expense.id) }}">
+                    <div class="mb-3">
+                      <label for="description" class="form-label">Description:</label>
+                      <input type="text" class="form-control" id="description{{ expense.id }}" name="description" value="{{ expense.description }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="amount" class="form-label">Amount:</label>
+                      <input type="number" class="form-control" id="amount{{ expense.id }}" name="amount" value="{{ expense.amount }}" step="0.01" min="0" required>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="participants" class="form-label">Participants:</label>
+                      {% for member in group.members %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="participants" value="{{ member.id }}"
+                            {% if member in expense.participants %}checked{% endif %}>
+                          <label class="form-check-label">{{ member.first_name }} {{ member.last_name }}</label>
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-danger" id="deleteExpenseBtn" onclick="deleteExpense({{ expense.id }})">Delete Expense</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 </div>
 
-
-
-
  <div class="mt-5 d-flex justify-content-between">
-
-
+   <a href="{{ url_for('views.add_expense', group_id=group.id) }}" class="btn btn-primary">
+     Add Expense
+   </a>
+   <div>
+    <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#settleUpModal">All My Expenses Settled</button>
+    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#diviModal">
+        Divi
+    </button>
+</div>
 
    <div id="leaveGroupContainer">
     <button class="btn btn-danger" id="leaveGroupBtn" onclick="confirmLeaveGroup()">Leave Group</button>
@@ -124,126 +190,151 @@
     </div>
   </div>
 </div>
+<div class="modal fade" id="diviModal" tabindex="-1" aria-labelledby="diviModalLabel" aria-hidden="true" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="diviModalLabel">Settlement Breakdown</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table" id="settlementTable">
+          <thead>
+            <tr>
+              <th>Recipient</th>
+              <th>Payer</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for settlement in settlements %}
+              <tr>
+                <td>{{ settlement[1] }}</td>
+                <td>{{ settlement[3] }}</td>
+                <td>{% if settlement[4] is defined and settlement[4] is number %}
+                  ${{ settlement[4]|round(2) }} 
+                {% else %}
+                  -  {% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
-
+<div class="modal fade" id="settleUpModal" tabindex="-1" aria-labelledby="settleUpModalLabel" aria-hidden="true" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="settleUpModalLabel">Settle Up</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to mark all your expenses as settled?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="settleUp()">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-   // Global variables (ensure they are defined in your Flask context)
-   const currentGroupId = {{ group.id }};
-   const currentUserName = "{{ current_user.first_name }} {{ current_user.last_name }}";
-    // Wait for the DOM to be fully loaded
-   document.addEventListener("DOMContentLoaded", () => {
-     // Fetch and display expenses
-     fetch(`/api/group/${currentGroupId}/expenses`)
-       .then((response) => {
-         if (!response.ok) {
-           throw new Error("Network response was not ok.");
-         }
-         return response.json();
-       })
-       .then((expenses) => {
-         const expenseTable = document.getElementById("expenseTable");
-         const balanceAmount = document.getElementById("balanceAmount");
-         expenseTable.innerHTML = "";
-         let balance = 0;
-          // Loop through expenses and create elements for each
-         for (const expense of expenses) {
-           const row = document.createElement("tr");
-          
-           // Update the balance for the user
-           expensePercentage =1;
-           if (expense.paid_by === currentUserName) {
-             balance += expense.amount;
-           } else {
-             balance -= expense.amount / expensePercentage; // TODO: create expensePercentage for each expense and user
-           }
-           
-          
-           // Create cell elements
-           const descriptionCell = document.createElement('td');
-           descriptionCell.textContent = expense.description;
-          
-           const amountCell = document.createElement('td');
-           if (expense.paid_by === currentUserName) {
-          // Create badge for money
-          const badge = document.createElement('span');
-          badge.classList.add("badge", "bg-success"); // Bootstrap badge class and success (green) color
-          badge.textContent = '$' + expense.amount.toFixed(2);
-          amountCell.appendChild(badge);
-           } else {
-          const badge = document.createElement('span');
-          badge.classList.add('badge', 'bg-danger'); // Bootstrap badge class and danger color (red)
-          badge.textContent = '$' + expense.amount.toFixed(2);
-          amountCell.appendChild(badge);
-           }
+  // Global variables (ensure they are defined in your Flask context)
+  const currentGroupId = {{ group.id }};
 
+  // functions for confirmation
+  function confirmLeaveGroup() {
+    const leaveModal = new bootstrap.Modal(
+      document.getElementById("leaveConfirmation")
+    );
+    leaveModal.show();
+    // Add event listener to the Yes button
+    document
+      .querySelector("#leaveConfirmation .btn-success")
+      .addEventListener("click", function () {
+        leaveGroup(currentGroupId); 
+      });
+  }
 
-            const dateFrequencyCell = document.createElement('td');
-            if (expense.is_recurring) {
-                const badge = document.createElement('span');
-                badge.classList.add("badge", "bg-warning"); // Bootstrap badge class and warning (orange) color
-                badge.textContent = expense.recurrence_frequency;
-                dateFrequencyCell.appendChild(badge);
-            } else {
-                dateFrequencyCell.textContent = expense.date;
-            }
+  function hideLeaveConfirmation() {
+    document.getElementById("leaveConfirmation").style.display = "none";
+  }
 
+  function leaveGroup(groupId) {
+    fetch(`/api/leave_group/${groupId}`, {
+      method: "POST",
+    })
+      .then((response) => {
+        if (response.ok) {
+          window.location.href = "{{ url_for('views.dashboard') }}";
+        } else {
+          alert("Error leaving group.");
+        }
+      });
+  }
+  function deleteExpense(expenseId) { 
+    fetch(`/api/expense/${expenseId}`, {
+      method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Refresh the page or update the table dynamically
+        location.reload(); 
+      } else {
+        alert("Error deleting expense. Please try again.");
+      }
+    });
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+  fetchBalanceAndUpdateDisplay();
+});
 
-           const paidByCell = document.createElement('td');
-           paidByCell.textContent = expense.paid_by;
-          
-           // Add cells to row and append to table.
-           row.appendChild(descriptionCell);
-           row.appendChild(amountCell);
-           row.appendChild(paidByCell);
-           row.appendChild(dateFrequencyCell);
-          
-           expenseTable.appendChild(row);
-          
-          }
-          // Update balance box
-         balanceAmount.textContent = balance.toFixed(2);
-         balanceBox.classList.remove("alert-success", "alert-danger");
-         if (balance > 0) {
-           balanceBox.classList.add("alert-success"); // Owed money
-         } else if (balance < 0) {
-           balanceBox.classList.add("alert-danger"); // Owes money
-         }
-       })
-       .catch((error) => {
-         console.error("Error fetching expenses:", error);
-         // Handle the error (e.g., display an error message to the user)
-       });
-   });
-    // functions for confirmation
-   function confirmLeaveGroup() {
-     const leaveModal = new bootstrap.Modal(
-       document.getElementById("leaveConfirmation")
-     );
-     leaveModal.show();
-      // Add event listener to the Yes button
-     document
-       .querySelector("#leaveConfirmation .btn-success")
-       .addEventListener("click", function () {
-         leaveGroup(currentGroupId); // Now you have access to groupId inside this function
-       });
-   }
-    function hideLeaveConfirmation() {
-     document.getElementById("leaveConfirmation").style.display = "none";
-   }
-    function leaveGroup(groupId) {
-     fetch(`/api/leave_group/${groupId}`, {
-       method: "POST",
-     })
-       .then((response) => {
-         if (response.ok) {
-           window.location.href = "{{ url_for('views.dashboard') }}";
-         } else {
-           alert("Error leaving group.");
-         }
-       });
-   }
- </script>
+function fetchBalanceAndUpdateDisplay() {
+  fetch(`/api/group/${currentGroupId}/balance`) 
+    .then(response => response.json())
+    .then(data => {
+      const balanceAmount = document.getElementById("balanceAmount");
+      const balanceBox = document.getElementById("balanceBox");
+
+      balanceAmount.textContent = data.balance.toFixed(2);
+
+      balanceBox.classList.remove("alert-success", "alert-danger");
+      if (data.balance > 0) {
+        balanceBox.classList.add("alert-success"); 
+      } else if (data.balance < 0) {
+        balanceBox.classList.add("alert-danger"); 
+      }
+    })
+    .catch(error => {
+      console.error("Error fetching balance:", error);
+      // Handle the error appropriately
+    });
+}
+function settleUp() {
+    fetch(`/api/group/${currentGroupId}/settle_up`, {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Refresh the page or update balances dynamically
+        location.reload(); 
+        $('#settleUpModal').modal('hide'); // Close the modal
+      } else {
+        alert("Error settling up. Please try again.");
+      }
+    })
+    .catch(error => {
+      console.error("Error settling up:", error);
+      // Handle error appropriately
+    });
+  }
+</script>
 </body>
 </html>
 {% endblock %}
