@@ -3,22 +3,41 @@
 
 {% block content %}
 <style>
+@media (max-width: 768px) { /* Adjust breakpoint as needed */
+  .fixed-bottom-right .btn {
+    margin-bottom: 10px; /* Add 10px bottom margin to each button on smaller screens */
+  }
 
+  .fixed-bottom-right .btn:last-child { /* Remove bottom margin from the last button */
+    margin-bottom: 0;
+  }
+}
 </style>
 <div class="container">
   <div class="row">
     <div class="col-12">
       <h1>{{ group.name }}</h1>
       <p class="text-muted">{{ group.description }}</p>
-
+      {% for settlement in settlements %}
+        {% if settlement[2] == current_user.id %}
+          <div class="alert alert-success" role="alert">
+            You owe {{ settlement[1] }} ${{ settlement[4]|round(2) }}
+          </div>
+        {% elif settlement[0] == current_user.id %}
+          <div class="alert alert-danger" role="alert">
+            {{ settlement[3] }} owes you ${{ settlement[4]|round(2) }}
+          </div>
+        {% endif %}
+    {% endfor %}
       <a href="{{ url_for('views.add_expense', group_id=group.id) }}" 
          class="btn btn-primary btn-lg fixed-bottom-right"> 
         <i class="fas fa-plus"></i>  Add Expense
       </a>
       <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" 
-         class="btn btn-lg btn-primary fixed-bottom-right mt-2"> 
+         class="btn btn-lg btn-primary fixed-bottom-right"> 
         <i class="fas fa-envelope"></i>  Invite to Group
       </a>
+      <button type="button" class="btn btn-lg btn-danger fixed-bottom-right"onclick="leaveGroup({{ group.id }})">Leave Group</button>
     </div>
   </div>
 
@@ -196,5 +215,43 @@
     }
     
     </script> -->
-    
+    {% if balances[current_user.id] < 0 %}
+    <div class="text-center" style="margin: 20px auto; width: fit-content;"> 
+      <button type="button" class="btn btn-secondary" onclick="settleUp()">Settle Up Now</button> 
+    </div>
+    {% endif %}
+    <script>
+      const currentGroupId = {{ group.id }};
+      function settleUp() {
+        fetch(`/api/group/${currentGroupId}/settle_up`, {
+          method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Refresh the page or update balances dynamically
+            location.reload(); 
+            $('#settleUpModal').modal('hide'); // Close the modal
+          } else {
+            alert("Error settling up. Please try again.");
+          }
+        })
+        .catch(error => {
+          console.error("Error settling up:", error);
+          // Handle error appropriately
+        });
+      }
+      function leaveGroup(groupId) {
+    fetch(`/api/leave_group/${groupId}`, {
+      method: "POST",
+    })
+      .then((response) => {
+        if (response.ok) {
+          window.location.href = "{{ url_for('views.dashboard') }}";
+        } else {
+          alert("Error leaving group.");
+        }
+      });
+  }
+  </script>
 {% endblock %}

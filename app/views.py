@@ -134,11 +134,13 @@ def group_details(group_id):
     # expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.id.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
 
     balances = calculate_balances(group)
+    settlements = calculate_optimal_settlements(balances)
     return render_template(
         'group2.html', 
         group=group, 
         expenses=expenses, 
         balances=balances,
+        settlements=settlements,
         # more_expenses=expenses.has_next
     )
 
@@ -236,30 +238,19 @@ def delete_expense(expense_id):
 
 
 def calculate_balances(group):
-    """
-    Calculates the balances for each member in the given group.
-    
-    Returns a dictionary where keys are user IDs and values are their balances (positive if owed, negative if owing).
-    """
-
+    """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
     balances = {member.id: 0 for member in group.members}
-
     for expense in group.expenses:
-        total_participants = len(expense.participants)  # No need to add 1 for the payer
-        if total_participants == 0:
-            continue  # Skip expenses with no participants
-        # Calculate price per person involved
-        share_per_person = expense.amount / total_participants
-
-        # Deduct the payer's share from their balance
-        balances[expense.paid_by.id] += share_per_person * (total_participants - 1)
-
-        # Add the share to each participant's balance (excluding the payer)
+        num_participants = len(expense.participants)
+        # Check for zero participants (shouldn't happen, but it's a good safety measure)
+        if num_participants == 0:
+            print(f"Expense {expense.id} has no participants. Skipping.")  
+            continue  # Skip this expense
+        
+        share_per_participant = expense.amount / num_participants
         for participant in expense.participants:
-            if participant != expense.paid_by:  # Exclude the payer
-                balances[participant.id] -= share_per_person
-    print(balances)
-
+            balances[participant.id] -= share_per_participant
+        balances[expense.paid_by_id] += expense.amount
     return balances
 
 

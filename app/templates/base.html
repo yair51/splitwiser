@@ -78,10 +78,6 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'views.index' %}active{% endif %}" 
-                           href="{{ url_for('views.index') }}">Home</a> 
-                    </li>
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link
@@ -101,6 +97,10 @@
                                href="{{ url_for('auth.logout') }}">Logout</a>
                         </li>
                     {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'views.index' %}active{% endif %}" 
+                           href="{{ url_for('views.index') }}">Home</a> 
+                    </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'auth.login' in request.endpoint %}active{% endif %}" 
                                href="{{ url_for('auth.login') }}">Login</a>
