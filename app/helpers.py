@@ -20,7 +20,6 @@ def send_email(subject, recipients, template, **kwargs):
     else:
         ssl._create_default_https_context = _create_unverified_https_context
     """Sends an email using the SendGrid API."""
-    print(current_app.config)
     if not current_app.config['MAIL_PASSWORD']:
         app.logger.warning('SENDGRID_API_KEY not set. Emails will not be sent.')
         return

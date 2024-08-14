@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: sans-serif; background-color: #f5f5f5; padding: 20px;">
+    <div style="background-color: #fff; padding: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h1 style="color: #333; text-align: center;">New Contact Form Submission</h1>
+
+        <p style="margin-bottom: 20px;">You have received a new message from the Splitwiser contact form:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; font-weight: bold;">Name:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">{{ name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; font-weight: bold;">Email:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">{{ email }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; font-weight: bold;">Subject:</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">{{ subject2 }}</td>
+            </tr>
+        </table>
+
+        <h3 style="color: #333;">Message:</h3>
+        <p style="margin-bottom: 30px;">{{ message }}</p>
+
+        <p>Please respond to this inquiry at your earliest convenience.</p>
+
+        <p style="text-align: center;">The Splitwiser Team</p>
+    </div>
+</body>
+</html>
+
