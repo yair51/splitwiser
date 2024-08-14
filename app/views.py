@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from flask_mail import Message
-from .models import Group, Expense, Invitation, User, expense_participants
+from .models import Group, Expense, Invitation, User
 from app.helpers import send_email, extract_data_from_receipt
 from . import db, mail
 import datetime
@@ -12,8 +12,7 @@ import io
 from PIL import Image, ExifTags
 import io
 import pillow_heif
-import pytesseract
-
+import json
 
 views = Blueprint('views', __name__)
 
@@ -28,11 +27,49 @@ def index():
     ]
     return render_template('index.html', testimonials=testimonials) 
 
-@views.route('/dashboard')
+
+
+
+@views.route('/dashboard')  # Or @views.route('/dashboard')
 @login_required
 def dashboard():
-    user_groups = current_user.groups
-    return render_template('dashboard.html', groups=user_groups) 
+    # 1. Recent Activity Summary (Placeholder - you'll need to implement the actual logic)
+    new_expenses_count = 0  # Replace with actual count of new expenses
+    groups_with_balances = []  # Replace with actual list of groups with outstanding balances
+    upcoming_expenses = []   # Replace with actual list of upcoming recurring expenses
+
+    # 2. Recent Groups and Balances
+    recent_groups = current_user.groups  # Get 3 most recent groups
+    balances = calculate_balances_for_user(current_user)
+
+    # 3. Personalized Insights (Optional)
+    show_insights = False  # Set to True if you have insights to display
+    # ... (Add logic to fetch and prepare insights data if needed)
+
+    # 4. Render the template
+    return render_template('dashboard2.html',
+                            new_expenses_count=new_expenses_count, 
+                           groups_with_balances=groups_with_balances,
+                           upcoming_expenses=upcoming_expenses,
+                           recent_groups=recent_groups,
+                           balances=balances,
+                           show_insights=show_insights)
+
+# Helper function to calculate balances for a specific user across all their groups
+def calculate_balances_for_user(user):
+    balances = {}
+    for group in user.groups:
+        group_balances = calculate_balances(group)
+        balances[group.id] = group_balances.get(user.id, 0)  # Get the user's balance for this group
+    return balances
+
+# ... other routes
+
+# @views.route('/dashboard')
+# @login_required
+# def dashboard():
+#     user_groups = current_user.groups
+#     return render_template('dashboard.html', groups=user_groups) 
 
 @views.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -93,7 +130,8 @@ def group_details(group_id):
         abort(403)
 
     page = request.args.get('page', 1, type=int) 
-    expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.id.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
+    expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.id.desc())
+    # expenses = Expense.query.filter_by(group_id=group_id).order_by(Expense.id.desc()).paginate(page=page, per_page=ITEMS_PER_PAGE)
 
     balances = calculate_balances(group)
     return render_template(
@@ -101,7 +139,7 @@ def group_details(group_id):
         group=group, 
         expenses=expenses, 
         balances=balances,
-        more_expenses=expenses.has_next
+        # more_expenses=expenses.has_next
     )
 
 @views.route('/group/<int:group_id>/expenses')
@@ -210,15 +248,17 @@ def calculate_balances(group):
         total_participants = len(expense.participants)  # No need to add 1 for the payer
         if total_participants == 0:
             continue  # Skip expenses with no participants
+        # Calculate price per person involved
         share_per_person = expense.amount / total_participants
 
         # Deduct the payer's share from their balance
-        balances[expense.paid_by.id] -= share_per_person
+        balances[expense.paid_by.id] += share_per_person * (total_participants - 1)
 
         # Add the share to each participant's balance (excluding the payer)
         for participant in expense.participants:
             if participant != expense.paid_by:  # Exclude the payer
-                balances[participant.id] += share_per_person
+                balances[participant.id] -= share_per_person
+    print(balances)
 
     return balances
 
@@ -335,15 +375,10 @@ def allowed_file(filename):
 def add_expense(group_id):
     group = Group.query.get_or_404(group_id)
 
-    available_languages = pytesseract.get_languages(config='')
-
-
-    print(available_languages)
 
     # Check if user is a member of the group
     if current_user not in group.members:
         abort(403)  # Forbidden access
-
 
     if request.method == 'POST':
         items_data = request.get_json()['items']  # Get items as JSON array
@@ -372,11 +407,11 @@ def add_expense(group_id):
             db.session.add(expense)
 
         db.session.commit()
-
+        
         flash('Expense(s) added successfully!', 'success')
         return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
 
-    return render_template('add_expense.html', group=group)
+    return render_template('add_expense2.html', group=group, extracted_items=[])
     
 
 
@@ -617,3 +652,64 @@ def settle_up(group_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": "An error occurred while settling up."}), 500
+
+
+# Handles quick add button to add expenses to a group
+@views.route('/quick_add_expense', methods=['POST'])
+@login_required
+def quick_add_expense():
+    description = request.form['description']
+    amount = float(request.form['amount'])
+    group_id = int(request.form['group_id'])
+    paid_by_id = int(request.form['paid_by'])
+    participant_ids = json.loads(request.form['participants'])
+
+    group = Group.query.get_or_404(group_id)
+    paid_by = User.query.get_or_404(paid_by_id)
+
+    # Basic validation
+    if not description or amount <= 0:
+        flash('Please enter a valid description and amount.', 'danger')
+        return jsonify({"success": False, "error": "Invalid item data"})
+
+    # Create the Expense object
+    expense = Expense(
+        description=description,
+        amount=amount,
+        date=datetime.datetime.utcnow(),
+        group=group,
+        paid_by=paid_by 
+    )
+
+    # Associate participants with the expense 
+    for participant_id in participant_ids:
+        participant = User.query.get(participant_id)
+        if participant and participant in group.members:
+            expense.participants.append(participant)
+
+    db.session.add(expense)
+    db.session.commit()
+
+    flash('Expense added successfully!', 'success')
+    # return(redirect(url_for('views.group_details', group_id=group.id)))
+    return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
+
+
+# Returns JSON list of group members
+@views.route('/group/<int:group_id>/members')
+@login_required
+def get_group_members(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    if current_user not in group.members:
+        abort(403) 
+
+    members_data = [
+        {
+            "id": member.id,
+            "first_name": member.first_name,
+            "last_name": member.last_name
+        } for member in group.members
+    ]
+
+    return jsonify({"success": True, "members": members_data})

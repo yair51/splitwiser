@@ -64,9 +64,10 @@ def register():
                 db.session.commit()
                 flash(f'Account created and you have been added to {group.name}!', 'success')
                 return redirect(url_for('views.group_details', group_id=group.id))
-        
         # If no token, or invalid token, redirect to dashboard
-        flash('Account created successfully!', 'success') 
+        else:
+            login_user(new_user)
+            flash('Account created successfully!', 'success')
         return redirect(url_for('views.dashboard'))
 
     return render_template('register.html')

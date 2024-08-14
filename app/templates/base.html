@@ -52,11 +52,23 @@
             opacity: 0.8; 
         }
 
+
+        .btn-green {
+        background-color: #2ecc71; 
+        border-color: #2ecc71;
+        color: white;
+    }
+
+        .btn-green:hover {
+        background-color: #27ae60;
+        border-color: #218838;
+        }
+
     </style>
 </head>
 <body data-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
 
-    <nav class="navbar bg-primary navbar-expand-lg">
+    <nav class="navbar bg-primary navbar-dark navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('views.index') }}">Splitwiser</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -64,8 +76,7 @@
  aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse
- navbar-collapse" id="navbarNav">
+            <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'views.index' %}active{% endif %}" 
