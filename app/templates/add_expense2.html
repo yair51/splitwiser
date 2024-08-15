@@ -207,7 +207,6 @@ processReceiptBtn.addEventListener('click', function(event) {
 
 // Add event listener to form for image submission
 document.getElementById('expenseForm').addEventListener('submit', function(event) {
-    console.log("hello");
     event.preventDefault();
 
     // Gather edited item data from the accordion
@@ -222,8 +221,10 @@ document.getElementById('expenseForm').addEventListener('submit', function(event
 
         const participants = Array.from(row.querySelectorAll('.participant-checkboxes input:checked')).map(checkbox => checkbox.value);
         console.log("participants", participants);
+        const paidById = row.querySelector('.accordion-body select[name^="items"][name$="[paid_by]"]').value; 
+        console.log("paidById", paidById);
 
-        editedItems.push({ name, price, participants });
+        editedItems.push({ name, price, participants, paidById });
         console.log(editedItems);
     });
 

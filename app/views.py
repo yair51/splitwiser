@@ -240,7 +240,8 @@ def delete_expense(expense_id):
 
 def calculate_balances(group):
     """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
-    balances = {member.id: 0 for member in group.members}
+    max_id = max(member.id for member in group.members)
+    balances = {i: 0 for i in range(max_id + 1)}
     for expense in group.expenses:
         num_participants = len(expense.participants)
         # Check for zero participants (shouldn't happen, but it's a good safety measure)
@@ -250,9 +251,14 @@ def calculate_balances(group):
         
         share_per_participant = expense.amount / num_participants
         for participant in expense.participants:
-            print("balances", balances)
-            balances[participant.id] -= share_per_participant
-        balances[expense.paid_by_id] += expense.amount
+            if participant.id not in balances:
+                print(f"Warning: Participant {participant.id} not found in group. Skipping.")
+                continue  # Or handle this case differently based on your application logic
+            balances[participant.id] -= share_per_participant 
+        if expense.paid_by_id not in balances:
+                print(f"Warning: Participant {expense.paid_by_id} not found in group. Skipping.")
+        else:
+            balances[expense.paid_by_id] += expense.amount
     return balances
 
 
@@ -381,20 +387,28 @@ def add_expense(group_id):
             description = item["name"]
             amount = float(item["price"])
             participant_ids = [int(p) for p in item.get("participants", [])]
+            paid_by_id = int(item.get("paidById", current_user.id))
+
+
+             # Get the paid_by user object
+            paid_by = User.query.get(paid_by_id)
+            if not paid_by:
+                flash(f'Paid By user with ID {paid_by_id} not found.', 'danger')
+                return jsonify({"success": False, "error": "Invalid paid_by user"})
+            
             # Create new expense object
             expense = Expense(
                 description=description,
                 amount=amount,
                 date=datetime.datetime.utcnow(),
                 group_id=group_id,
-                paid_by=current_user
+                paid_by=paid_by
             )
             # Associate participants with the expense (using the new relationship)
             for participant_id in participant_ids:
                 participant = User.query.get(participant_id)
                 # Add the user to the expense's participants
                 if participant and participant in group.members:
-                    print(participant)
                     expense.participants.append(participant)
 
             db.session.add(expense)
