@@ -239,7 +239,8 @@ def delete_expense(expense_id):
 
 def calculate_balances(group):
     """Calculates the balances for each member in a group, considering participants and payments, with zero division check."""
-    balances = {member.id: 0 for member in group.members}
+    max_id = max(member.id for member in group.members)
+    balances = {i: 0 for i in range(max_id + 1)}
     for expense in group.expenses:
         num_participants = len(expense.participants)
         # Check for zero participants (shouldn't happen, but it's a good safety measure)
@@ -249,8 +250,14 @@ def calculate_balances(group):
         
         share_per_participant = expense.amount / num_participants
         for participant in expense.participants:
-            balances[participant.id] -= share_per_participant
-        balances[expense.paid_by_id] += expense.amount
+            if participant.id not in balances:
+                print(f"Warning: Participant {participant.id} not found in group. Skipping.")
+                continue  # Or handle this case differently based on your application logic
+            balances[participant.id] -= share_per_participant 
+        if expense.paid_by_id not in balances:
+                print(f"Warning: Participant {expense.paid_by_id} not found in group. Skipping.")
+        else:
+            balances[expense.paid_by_id] += expense.amount
     return balances
 
 
