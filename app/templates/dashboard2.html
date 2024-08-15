@@ -18,7 +18,7 @@
           <h5 class="card-title">Add Expense</h5>
           <p class="card-text">Quickly log a new expense.</p>
           <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quickAddExpenseModal">
-            Quick Add
+            <i class="fas fa-plus"></i> Quick Add
           </button>
         </div>
       </div>
@@ -28,7 +28,7 @@
         <div class="card-body text-center">
           <h5 class="card-title">Create Group</h5>
           <p class="card-text">Start a new group with friends or roommates.</p>
-          <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">Create Group</a>
+          <a href="{{ url_for('views.create_group') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Create Group</a>
         </div>
       </div>
     </div>
@@ -84,7 +84,7 @@
   <section class="container mt-5 text-center">
     <h3>Unlock More with Splitwiser Premium</h3>
     <p>Upgrade to access advanced features like receipt scanning, smart categorization, and personalized insights.</p>
-    <a href="#" class="btn btn-warning btn-lg">Upgrade Now</a>
+    <a href="#" class="btn btn-warning btn-lg"><i class="fa-solid fa-money-bill"></i> Upgrade Now</a>
   </section>
   {% endif %}
 
@@ -104,7 +104,7 @@
             </div>
             <div class="mb-3">
               <label for="quickAddAmount" class="form-label">Amount</label>
-              <input type="number" class="form-control" id="quickAddAmount" name="amount" step="0.01" min="0.01" required>
+              <input type="number" step="0.01" class="form-control" id="quickAddAmount" name="amount" step="0.01" min="0.01" required>
             </div>
             <div class="mb-3">
               <label for="quickAddGroup" class="form-label">Group</label>

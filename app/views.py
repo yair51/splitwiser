@@ -86,10 +86,11 @@ def contact():
 
         # Send email to your support address
         msg = Message(f'Splitwiser Contact Form - {subject}', 
-                      sender=email, 
+                      sender='yairgritzman@gmail.com', 
                       recipients=[current_app.config['MAIL_DEFAULT_SENDER']])  # Use your support email here
-        msg.body = f"From: {name} <{email}>\n\n{message}"
-        mail.send(msg)
+        msg.html = f"From: {name} <{email}>\n\n{message}"
+        # mail.send(msg)
+        send_email(subject, [current_app.config['MAIL_DEFAULT_SENDER']], 'email/contact_form_submission.html', name=name, email=email, subject2=subject, message=message)
 
         flash('Your message has been sent. Thank you!', 'success')
         return redirect(url_for('views.contact'))  # Redirect back to the contact page
@@ -249,6 +250,7 @@ def calculate_balances(group):
         
         share_per_participant = expense.amount / num_participants
         for participant in expense.participants:
+            print("balances", balances)
             balances[participant.id] -= share_per_participant
         balances[expense.paid_by_id] += expense.amount
     return balances
@@ -402,7 +404,7 @@ def add_expense(group_id):
         flash('Expense(s) added successfully!', 'success')
         return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
 
-    return render_template('add_expense2.html', group=group, extracted_items=[])
+    return render_template('add_expense2.html', group=group)
     
 
 

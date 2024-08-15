@@ -79,7 +79,7 @@ function addItemToTable(item, index) {
     let row = `
         <tr id="item-row-${index}">
             <td><input type="text" class="form-control item-name" name="items[${index}][name]" value="${item.name || ''}" required></td> 
-            <td><input type="number" class="form-control item-price" name="items[${index}][price]" required value="${item.price || ''}" step="0.01" min="0"></td>
+            <td><input type="number" step="0.01" class="form-control item-price" name="items[${index}][price]" required value="${item.price || ''}" step="0.01" min="0"></td>
             <td class="participant-checkboxes">
             {% for member in group.members %}
                 <div class="form-check">

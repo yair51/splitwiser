@@ -23,7 +23,7 @@
 
     <div class="d-flex justify-content-between mb-3"> 
         <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button>
-        <button type="button" class="btn btn-green" id="add-item-btn">Add Item</button>
+        <button type="button" class="btn btn-green" id="add-item-btn"><i class="fas fa-plus"></i> Add Item</button>
     </div>
 
     <div id="extracted-items" style="display: none;">
@@ -82,7 +82,7 @@ function addItemToAccordion(item, index) {
                     </div>
                     <div class="mb-3">
                         <label for="item-price-${index}" class="form-label">Price</label>
-                        <input type="number" class="form-control item-price" id="item-price-${index}" name="items[${index}][price]" value="${item.price || ''}" step="0.01" min="0">
+                        <input type="number" step="0.01" class="form-control item-price" id="item-price-${index}" name="items[${index}][price]" value="${item.price || ''}" step="0.01" min="0">
                     </div>
                     <div class="mb-3">
                         <label for="paid-by-${index}" class="form-label">Paid By</label>
