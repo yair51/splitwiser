@@ -723,3 +723,21 @@ def get_group_members(group_id):
     ]
 
     return jsonify({"success": True, "members": members_data})
+
+@views.route('/generate_invitation_token/<int:group_id>', methods=['GET'])
+@login_required
+def generate_invitation_token(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        abort(403)  # Forbidden access
+
+    token = secrets.token_hex(16)  # Generate a unique token
+
+    invitation = Invitation(email='Invitation_link', group_id=group_id, token=token)  
+    db.session.add(invitation)
+    db.session.commit()
+
+    # Construct the full invitation link
+    invitation_link = url_for('views.join_group', token=token, _external=True)
+
+    return jsonify({'invitation_link': invitation_link})
