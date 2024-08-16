@@ -7,6 +7,7 @@ from openai import OpenAI
 import pytesseract
 import os
 from langdetect import detect
+from PIL import ImageEnhance, ImageFilter
 
 
 # Send Email Function
@@ -43,6 +44,12 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
     """Extract data from receipt image using OCR and LLM."""
 
     text = ""
+    # Image Preprocessing
+    image_data = image_data.convert('L')  # Convert to grayscale (optional, but often improves OCR accuracy)
+    # Enhance contrast
+    enhancer = ImageEnhance.Contrast(image_data)
+    image_data = enhancer.enhance(1.5)  # Adjust the factor as needed
+    image_data = image_data.filter(ImageFilter.SHARPEN) # Sharpen the image
 
     # Extract text using Tesseract OCR with the detected language
     try:
@@ -50,7 +57,7 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
         print("OCR text", text)
     except pytesseract.TesseractError as e:
         print("Error with OCR extraction: ", e)
-    prompt = (f"Extract items and their prices from the following receipt text in {language}. "
+    prompt = (f"Extract items and their prices from the following receipt text in {prompt_language}. "
             f"If an item name appears to be misspelled and you are confident about the correction, correct the spelling."
             f"Ensure that you capture the item name and price accurately:\n\n"
             f"{text}\n\n"
@@ -86,5 +93,5 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
 
     except Exception as e:
         current_app.logger.error("Error parsing receipt text: %s", e)
-        flash('Failed to parse receipt data. Please try again or enter manually.', 'danger')
+        # flash('Failed to parse receipt data. Please try again or enter manually.', 'danger')
         return None  # Return None to indicate failure

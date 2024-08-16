@@ -1,80 +1,250 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-<style>
-    /* Default (Light Mode) Table Styling */
-    .table[data-bs-theme="light"] {
-      background-color: #fff;
-      color: #212529;
-    }
-  
-    /* Dark Mode Table Styling */
-    .table[data-bs-theme="dark"] {
-      background-color: #343a40; /* Dark gray background */
-      color: #f8f9fa; /* Light text color */
-    }
-  
-    /* Style for table borders (adjust as needed) */
-    .table-bordered th,
-    .table-bordered td {
-      border-color: #dee2e6; /* Light gray border in light mode */
-    }
-  
-    body[data-theme="dark"] .table-bordered th,
-    body[data-theme="dark"] .table-bordered td {
-      border-color: #495057; /* Darker gray border in dark mode */
-    }
-  </style>
+
 {% block content %}
 <div class="container">
-  <h1 class="text-center mb-4">Welcome, {{ current_user.first_name }}!</h1>
 
-  {% if groups %}
-  <h2>Your Groups</h2>
-  <table class="table table-bordered table-hover" data-bs-theme="{% if current_user.is_authenticated and current_user.dark_mode %}dark{% else %}light{% endif %}">
-    <thead>
-      <tr>
-        <th>Group Name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for group in groups %}
-      <tr
-        class="clickable-row"
-        data-href="{{ url_for('views.group_details', group_id=group.id) }}"
-      >
-        <td>
-          {{ group.name }}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>You haven't joined any groups yet.</p>
+  <div class="row mt-4">
+    <div class="col-12">
+      <h1 class="text-center">Welcome back, {{ current_user.first_name }}!</h1>
+      <p class="text-center text-muted">Here's a quick overview of your recent activity.</p>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-sm-6 mb-3 mb-sm-0">
+      <div class="card">
+        <div class="card-body text-center">
+          <h5 class="card-title">Add Expense</h5>
+          <p class="card-text">Quickly log a new expense.</p>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quickAddExpenseModal">
+            <i class="fas fa-plus"></i> Quick Add
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card">
+        <div class="card-body text-center">
+          <h5 class="card-title">Create Group</h5>
+          <p class="card-text">Start a new group with friends or roommates.</p>
+          <a href="{{ url_for('views.create_group') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Create Group</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not unsettled_groups %}
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body text-center">
+          <h5 class="card-title">Settle Up</h5>
+          <p class="card-text">You have outstanding balances in some groups.</p>
+          <a href="#" class="btn btn-secondary">Settle Up Now</a>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
-  <div class="mt-4">
-    <a href="{{ url_for('views.create_group') }}" class="btn btn-primary">
-      Create a New Group
-    </a>
+  <h2 class="mt-5">Your Groups</h2>
+  <div class="row">
+    {% for group in recent_groups %}
+      <div class="col-12 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title">{{ group.name }}</h5>
+                <p class="card-text">Balance: 
+                  {% if balances[group.id] > 0 %}
+                    <span class="text-success">+${{ balances[group.id] | round(2, 'common') }}</span> (You are owed)
+                  {% elif balances[group.id] < 0 %}
+                    <span class="text-danger">${{ balances[group.id] | round(2, 'common') }}</span> (You owe)
+                  {% else %}
+                    <span class="text-muted">$0.00</span> (Settled up)
+                  {% endif %}
+                </p>
+              </div>
+              <a href="{{ url_for('views.group_details', group_id=group.id) }}" class="btn btn-outline-primary btn-sm">View Details</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
   </div>
-</div>
 
-<script>
-  document.addEventListener("DOMContentLoaded", (event) => {
-    const rows = document.querySelectorAll(".clickable-row");
-    rows.forEach((row) => {
-      row.addEventListener("click", () => {
-        window.location.href = row.dataset.href;
+  {% if show_insights %}
+  <h2 class="mt-5">Insights</h2>
+  </div>
+  {% endif %}
+
+  {% if not current_user.is_premium %}
+  <section class="container mt-5 text-center">
+    <h3>Unlock More with Splitwiser Premium</h3>
+    <p>Upgrade to access advanced features like receipt scanning, smart categorization, and personalized insights.</p>
+    <a href="#" class="btn btn-warning btn-lg"><i class="fa-solid fa-money-bill"></i> Upgrade Now</a>
+  </section>
+  {% endif %}
+
+  
+  <div class="modal fade" id="quickAddExpenseModal" tabindex="-1" aria-labelledby="quickAddExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="quickAddExpenseModalLabel">Quick Add Expense</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="quickAddExpenseForm">
+            <div class="mb-3">
+              <label for="quickAddDescription" class="form-label">Description</label>
+              <input type="text" class="form-control" id="quickAddDescription" name="description" required>
+            </div>
+            <div class="mb-3">
+              <label for="quickAddAmount" class="form-label">Amount</label>
+              <input type="number" step="0.01" class="form-control" id="quickAddAmount" name="amount" step="0.01" min="0.01" required>
+            </div>
+            <div class="mb-3">
+              <label for="quickAddGroup" class="form-label">Group</label>
+              <select class="form-select" id="quickAddGroup" name="group_id">
+                <option value="0" selected disabled>Select Group</option>
+                {% for group in current_user.groups %}
+                  <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="quickAddPaidBy" class="form-label">Paid By</label>
+              <select class="form-select" id="quickAddPaidBy" name="paid_by">
+              </select>
+            </div>
+            <div id="quickAddParticipantsSection" class="mb-3" style="display: block;">
+              <label class="form-label">Participants</label>
+              <div class="participant-checkboxes" id="quickAddParticipantCheckboxes">
+                </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="quickAddSelectAll">
+                <label class="form-check-label" for="quickAddSelectAll">
+                  Select All
+                </label>
+              </div>
+            </div>
+  
+            <button type="submit" class="btn btn-primary">Add Expense</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  
+  // Quick Add Form Submission
+  document.getElementById('quickAddExpenseForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+  
+      const formData = new FormData(this);
+  
+      // Gather participant data
+      const participantIds = Array.from(document.querySelectorAll('#quickAddParticipantCheckboxes input[type="checkbox"]:checked'))
+          .map(checkbox => checkbox.value);
+      formData.append('participants', JSON.stringify(participantIds)); 
+  
+      fetch('/quick_add_expense', {
+          method: 'POST',
+          body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              // Update the dashboard or redirect as needed
+              window.location.href = data.redirect_url; // Redirect to group details
+            //   location.reload(); // Refresh the page to show the new expense
+          } else {
+              alert("Error adding expense. Please try again.");
+          }
       });
+  });
+  
+  // Show/Hide Participants Section
+  const quickAddAmountInput = document.getElementById('quickAddAmount');
+  const quickAddParticipantsSection = document.getElementById('quickAddParticipantsSection');
+
+
+// Function to populate participant checkboxes based on selected group
+function populateParticipantCheckboxes() {
+  const groupId = document.getElementById('quickAddGroup').value;
+  const quickAddParticipantCheckboxes = document.getElementById('quickAddParticipantCheckboxes');
+  const quickAddPaidBySelect = document.getElementById('quickAddPaidBy');
+
+  // Make an AJAX request to fetch group members
+  fetch(`/group/${groupId}/members`) 
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.members) {
+        // Populate participant checkboxes
+        quickAddParticipantCheckboxes.innerHTML = ''; 
+        data.members.forEach(member => {
+          let checkboxHtml = `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="participants[]" value="${member.id}" id="participant-${member.id}">
+                <label class="form-check-label" for="participant-${member.id}">
+                    ${member.first_name} ${member.last_name}
+                </label>
+            </div>
+          `;
+          quickAddParticipantCheckboxes.innerHTML += checkboxHtml;
+        });
+
+        // Populate "Paid By" dropdown
+        quickAddPaidBySelect.innerHTML = ''; 
+        data.members.forEach(member => {
+            let optionHtml = `
+            <option value="${member.id}" ${member.id == {{ current_user.id }} ? 'selected' : ''}>
+                ${member.first_name} ${member.last_name}
+            </option>
+            `;
+            quickAddPaidBySelect.innerHTML += optionHtml;
+        })
+
+        // Re-attach event listener to the "Select All" checkbox 
+        const quickAddSelectAll = document.getElementById('quickAddSelectAll');
+        quickAddSelectAll.addEventListener('change', () => {
+          const participantCheckboxes = document.querySelectorAll('#quickAddParticipantCheckboxes input[type="checkbox"]');
+          participantCheckboxes.forEach(checkbox => {
+              checkbox.checked = quickAddSelectAll.checked;
+          });
+        });
+      } else {
+        alert("Error fetching group members. Please try again.");
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("An error occurred while fetching group members. Please try again.");
+    });
+}
+
+// Attach event listener to the group dropdown
+const quickAddGroupSelect = document.getElementById('quickAddGroup');
+quickAddGroupSelect.addEventListener('change', populateParticipantCheckboxes);
+
+// ... (Rest of your JavaScript code)
+
+
+  
+  // "Select All" checkbox functionality
+  const quickAddSelectAll = document.getElementById('quickAddSelectAll');
+  quickAddSelectAll.addEventListener('change', () => {
+    const participantCheckboxes = document.querySelectorAll('#quickAddParticipantCheckboxes input[type="checkbox"]');
+    participantCheckboxes.forEach(checkbox => {
+      checkbox.checked = quickAddSelectAll.checked;
     });
   });
-</script>
-
-<style>
-    /* Style for hover effect on clickable rows */
-    .clickable-row:hover {
-      cursor: pointer; /* Change cursor to pointer on hover */
-    }
-  </style>
-{% endblock %}
+  
+  </script>
+  
+  {% endblock %}
+  

@@ -33,6 +33,9 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'auth.login'
 
+# Set the session to be permanent
+# login_manager.remember_cookie_duration = timedelta(days=30) # Or any desired duration
+
 
 from app import views, models, auth  # Import routes and models after app is created
 

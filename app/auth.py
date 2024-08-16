@@ -24,7 +24,7 @@ def login():
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            login_user(user)
+            login_user(user, remember=True)
             return redirect(url_for('views.dashboard'))
         else:
             flash('Invalid email or password', 'danger')
@@ -57,7 +57,7 @@ def register():
             invitation = Invitation.query.filter_by(token=invitation_token).first()
             if invitation:
                 # If found an invitation, log in user and add them to the group
-                login_user(new_user)
+                login_user(new_user, remember=True)
                 group = invitation.group
                 group.members.append(new_user)
                 db.session.delete(invitation)  # Delete the used invitation
@@ -66,7 +66,7 @@ def register():
                 return redirect(url_for('views.group_details', group_id=group.id))
         # If no token, or invalid token, redirect to dashboard
         else:
-            login_user(new_user)
+            login_user(new_user, remember=True)
             flash('Account created successfully!', 'success')
         return redirect(url_for('views.dashboard'))
 

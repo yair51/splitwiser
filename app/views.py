@@ -9,7 +9,8 @@ import datetime
 import secrets
 from werkzeug.utils import secure_filename
 import io
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageEnhance, ImageFilter
+
 import io
 import pillow_heif
 import json
@@ -47,7 +48,7 @@ def dashboard():
     # ... (Add logic to fetch and prepare insights data if needed)
 
     # 4. Render the template
-    return render_template('dashboard2.html',
+    return render_template('dashboard.html',
                             new_expenses_count=new_expenses_count, 
                            groups_with_balances=groups_with_balances,
                            upcoming_expenses=upcoming_expenses,
@@ -62,14 +63,6 @@ def calculate_balances_for_user(user):
         group_balances = calculate_balances(group)
         balances[group.id] = group_balances.get(user.id, 0)  # Get the user's balance for this group
     return balances
-
-# ... other routes
-
-# @views.route('/dashboard')
-# @login_required
-# def dashboard():
-#     user_groups = current_user.groups
-#     return render_template('dashboard.html', groups=user_groups) 
 
 @views.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -137,7 +130,7 @@ def group_details(group_id):
     balances = calculate_balances(group)
     settlements = calculate_optimal_settlements(balances)
     return render_template(
-        'group2.html', 
+        'group.html', 
         group=group, 
         expenses=expenses, 
         balances=balances,
@@ -384,7 +377,7 @@ def add_expense(group_id):
 
     if request.method == 'POST':
         items_data = request.get_json()['items']  # Get items as JSON array
-        print(items_data)
+        print("items data", items_data)
 
         for item in items_data:
             description = item["name"]
@@ -421,7 +414,7 @@ def add_expense(group_id):
         flash('Expense(s) added successfully!', 'success')
         return jsonify({"success": True, "redirect_url": url_for('views.group_details', group_id=group_id)})
 
-    return render_template('add_expense2.html', group=group)
+    return render_template('add_expense.html', group=group)
     
 
 
@@ -490,6 +483,8 @@ def upload_receipt():
             except (AttributeError, KeyError, IndexError):
                 # Cases: image don't have getexif
                 pass
+        
+        print("Image opened successfully:", img)  # Add this line
         extracted_data = extract_data_from_receipt(img, language, prompt_language)
         print(extracted_data)
         return jsonify({"success": True, "items": extracted_data['items']})

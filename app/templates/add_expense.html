@@ -1,6 +1,3 @@
-
-
-
 {% extends "base.html" %}
 {% block title %}Add Expense to {{ group.name }}{% endblock %}
 
@@ -9,120 +6,188 @@
   <h2>Add Expense to {{ group.name }}</h2>
 
   <form id="expenseForm" method="POST" action="{{ url_for('views.add_expense', group_id=group.id) }}" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="receipt_image" class="form-label">Upload Receipt</label>
+      <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
+    </div>
 
     <div class="mb-3">
-        <label for="receipt_image" class="form-label">Upload Receipt</label>
-        <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
-      </div>
-  
-      <div class="mb-3">
-        <label for="receipt_language" class="form-label">Receipt Language</label>
-        <select class="form-select" id="receipt_language" name="receipt_language">
-            <option value="eng">English</option>
-            <option value="heb">Hebrew</option>
-            <option value="nor">Norwegian</option>
-        </select>
-      </div>
-  
-      <div class="d-flex justify-content-between mb-3"> 
-          <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button>
-          <!-- <button id="confirmButton">Confirm and Add Expense</button> -->
-          <button type="button" class="btn btn-success" id="add-item-btn">Add Item</button>
-      </div>
-  
-      <div id="extracted-items" style="display: block;">
-        <h3>Expenses:</h3>
-        <table class="table" id="item-table">
-          <thead>
-            <tr>
-              <th>Item Name</th>
-              <th>Price</th>
-              <th>Participants</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="item-table-body"></tbody>
-        </table>
-      </div>
-  
-  
-      <div class="d-flex justify-content-center">
-          <button type="submit" class="btn btn-primary" id="confirm-add-btn" style="display: none;">Confirm and Add Expense</button>
-      </div>
-    <!-- <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button> -->
-    <!-- <button type="submit" class="btn btn-primary" id="confirm-add-btn" style="display: block;">Confirm and Add Expense</button> -->
+      <label for="receipt_language" class="form-label">Receipt Language</label>
+      <select class="form-select" id="receipt_language" name="receipt_language">
+          <option value="eng">English</option>
+          <option value="heb">Hebrew</option>
+          <option value="nor">Norwegian</option>
+
+          </select>
+    </div>
+
+    <div class="d-flex justify-content-between mb-3"> 
+        <button type="button" class="btn btn-secondary" id="process-receipt-btn">Process Receipt</button>
+        <button type="button" class="btn btn-green" id="add-item-btn"><i class="fas fa-plus"></i> Add Item</button>
+    </div>
+
+    <div id="extracted-items" style="display: none;">
+      <h3>Review and Edit Items:</h3>
+      <div class="accordion" id="itemAccordion">
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center">
+        <button type="submit" class="btn btn-primary mt-3" id="confirm-add-btn" style="display: none;">Confirm and Add Expense</button>
+    </div>
   </form>
 </div>
 
 <script>
 const receiptImageInput = document.getElementById('receipt_image');
 const extractedItemsDiv = document.getElementById('extracted-items');
-const itemTableBody = document.getElementById('item-table-body');
+const itemAccordion = document.getElementById('itemAccordion');
 const addItemBtn = document.getElementById('add-item-btn');
 const processReceiptBtn = document.getElementById('process-receipt-btn');
 const confirmAddBtn = document.getElementById('confirm-add-btn');
-let items = []; 
+let nextItemIndex = 0; 
 
 
+let items = []; // Array to hold item data
+
+// Function to display extracted items in the accordion
 function displayExtractedItems(items) {
-    // extractedItemsDiv.style.display = 'block';
-
+    extractedItemsDiv.style.display = 'block'; // Show the "Extracted Items" section
+    // itemAccordion.innerHTML = ''; // Clear any existing items in the accordion
     items.forEach((item, index) => {
-        addItemToTable(item, index); // Use a separate function to add rows
+        addItemToAccordion(item, index); // Add each extracted item to the accordion
     });
 
-    updateRemoveButtonListeners(); // Update listeners after adding rows
+    // updateRemoveButtonListeners(); // Update listeners after adding rows
+    updateConfirmButtonVisibility(); // Update button visibility
 }
 
-// Function to add a new item to the table (used for both extracted and manually added items)
-function addItemToTable(item, index) {
-    let row = `
-        <tr id="item-row-${index}">
-            <td><input type="text" class="form-control item-name" name="items[${index}][name]" value="${item.name || ''}" required></td> 
-            <td><input type="number" step="0.01" class="form-control item-price" name="items[${index}][price]" required value="${item.price || ''}" step="0.01" min="0"></td>
-            <td class="participant-checkboxes">
-            {% for member in group.members %}
-                <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="items[${index}][participants][]" value="{{ member.id }}" id="participant-${index}-{{ member.id }}">
-                        <label class="form-check-label" for="participant-${index}-{{ member.id }}">
-                            {{ member.first_name }} {{ member.last_name }}
-                        </label>
+// Function to add a new item to the accordion 
+function addItemToAccordion(item, index) {
+    let accordionItem = `
+        <div class="accordion-item" id="item-${index}">
+            <h2 class="accordion-header" id="heading-${index}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="false" aria-controls="collapse-${index}">
+                    <div class="d-flex justify-content-between align-items-center w-100"> 
+                        <span class="item-name-header">${item.name || 'New Item'} - $${(item.price ? item.price.toFixed(2) : '0.00')}</span>
+                        <i class="fas fa-pencil-alt edit-icon"></i>
                     </div>
-            {% endfor %}
-            </td>
-            <td><button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}">Remove</button></td>
-        </tr>`;
-    itemTableBody.insertAdjacentHTML('beforeend', row); 
-}
+                </button>
+            </h2>
+            <div id="collapse-${index}" class="accordion-collapse collapse" aria-labelledby="heading-${index}" data-bs-parent="#itemAccordion">
+                <div class="accordion-body">
+                    <div class="mb-3">
+                        <label for="item-name-${index}" class="form-label">Item Name</label>
+                        <input type="text" class="form-control item-name" id="item-name-${index}" name="items[${index}][name]" value="${item.name || ''}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="item-price-${index}" class="form-label">Price</label>
+                        <input type="number" step="0.01" class="form-control item-price" id="item-price-${index}" name="items[${index}][price]" value="${item.price || ''}" step="0.01" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="paid-by-${index}" class="form-label">Paid By</label>
+                        <select class="form-select" id="paid-by-${index}" name="items[${index}][paid_by]">
+                            {% for member in group.members %}
+                                <option value="{{ member.id }}"
+                                    {{ 'selected' if member == current_user else '' }}>
+                                    {{ member.first_name }} {{ member.last_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Participants</label>
+                        <div class="participant-checkboxes">
+                            {% for member in group.members %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="items[${index}][participants][]" value="{{ member.id }}" id="participant-${index}-{{ member.id }}" 
+                                    {% if member == current_user %}checked{% endif %}>
+                                    <label class="form-check-label" for="participant-${index}-{{ member.id }}">
+                                        {{ member.first_name }} {{ member.last_name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="select-all-${index}">
+                            <label class="form-check-label" for="select-all-${index}">
+                                Select All
+                            </label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm remove-item-btn" data-index="${index}">Remove</button>
+                </div>
+            </div>
+        </div>
+    `;
+    itemAccordion.insertAdjacentHTML('beforeend', accordionItem); 
 
-// Event listener for adding a new item manually
-addItemBtn.addEventListener('click', () => {
-    let lastIndex = itemTableBody.querySelectorAll('tr').length;
-    addItemToTable({}, lastIndex); // Add an empty item
+    // Add event listeners for input changes to update the header
+    const itemNameInput = document.getElementById(`item-name-${index}`);
+    const itemPriceInput = document.getElementById(`item-price-${index}`);
+    const itemHeader = document.querySelector(`#item-${index} .item-name-header`);
+
+    itemNameInput.addEventListener('input', () => {
+        updateItemHeader(index);
+    });
+
+    itemPriceInput.addEventListener('input', () => {
+        updateItemHeader(index);
+    });
+
+
+    setTimeout(() => {
+        // Add event listener for "Select All" checkbox
+        const selectAllCheckbox = document.getElementById(`select-all-${index}`);
+        const participantCheckboxes = document.querySelectorAll(`#item-${index} .participant-checkboxes input[type="checkbox"]`);
+        selectAllCheckbox.addEventListener('change', () => {
+            participantCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+    }, 0)
+
+    
+
+    // Attach event listener to the newly added remove button
+    updateRemoveButtonListeners();
     updateConfirmButtonVisibility();
-    updateRemoveButtonListeners(); // Update listeners after adding a row
-});
+    // Update the nextItemIndex
+    nextItemIndex = Math.max(nextItemIndex, index + 1);
+}
 
 // Function to update event listeners for remove buttons
 function updateRemoveButtonListeners() {
     const removeButtons = document.querySelectorAll('.remove-item-btn');
     removeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const index = button.dataset.index;
-            document.getElementById(`item-row-${index}`).remove();
-            updateConfirmButtonVisibility(); 
-        });
-    });
+    // Check if an event listener is already attached
+    if (!button.onclick) {  
+      button.addEventListener('click', () => {
+        const index = button.dataset.index;
+        const itemToRemove = document.getElementById(`item-${index}`);
+        if (itemToRemove) { // Check if the element exists before removing
+          itemToRemove.remove();
+          updateConfirmButtonVisibility();
+        }
+      });
+    }
+  });
 }
-
 
 // Function to update button visibility
 function updateConfirmButtonVisibility() {
-  rowCount = itemTableBody.querySelectorAll('tr').length;
-  confirmAddBtn.style.display = rowCount > 0 ? 'block' : 'none'; 
+    const rowCount = itemAccordion.querySelectorAll('.accordion-item').length;
+    confirmAddBtn.style.display = rowCount > 0 ? 'block' : 'none'; 
 }
 
 
+// Function to update the accordion header text
+function updateItemHeader(index) {
+  const itemName = document.getElementById(`item-name-${index}`).value || 'New Item';
+  const itemPrice = document.getElementById(`item-price-${index}`).value;
+  const formattedPrice = itemPrice ? `$${parseFloat(itemPrice).toFixed(2)}` : '$0.00';
+  document.querySelector(`#item-${index} .item-name-header`).textContent = `${itemName} - ${formattedPrice}`;
+}
 
 // Event listener for the "Process Receipt" button
 processReceiptBtn.addEventListener('click', function(event) {
@@ -145,6 +210,7 @@ processReceiptBtn.addEventListener('click', function(event) {
     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
     this.disabled = true;
 
+    
     fetch('/upload_receipt', { 
         method: 'POST',
         body: formData
@@ -157,7 +223,6 @@ processReceiptBtn.addEventListener('click', function(event) {
 
         if (data.success && data.items) {
             displayExtractedItems(data.items);
-            updateConfirmButtonVisibility();
         } else {
             alert("Error extracting items from receipt. Please try again.");
         }
@@ -171,25 +236,23 @@ processReceiptBtn.addEventListener('click', function(event) {
     });
 });
 
-
-//Add event listener to form for image submission
+// Add event listener to form for image submission
 document.getElementById('expenseForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
-    // Gather edited item data from the table
+    // Gather edited item data from the accordion
     const editedItems = [];
-    const rows = document.querySelectorAll('#item-table-body tr');
+    const rows = document.querySelectorAll('#itemAccordion .accordion-item'); // Adjusted selector to target the accordion items
     rows.forEach(row => {
         const name = row.querySelector('.item-name').value;
         const price = parseFloat(row.querySelector('.item-price').value);
-        const participants = Array.from(row.querySelectorAll('.participant-checkboxes input[type="checkbox"]:checked')) 
-            .map(checkbox => checkbox.value);
-        editedItems.push({ name, price, participants });
-        console.log(editedItems)
+        const participants = Array.from(row.querySelectorAll('.participant-checkboxes input:checked')).map(checkbox => checkbox.value);
+        const paidById = row.querySelector('.accordion-body select[name^="items"][name$="[paid_by]"]').value; 
+        editedItems.push({ name, price, participants, paidById });
     });
 
     // Send the edited item data to the backend
-    fetch('/group/{{group.id}}/add_expense', {
+    fetch(`/group/{{ group.id }}/add_expense`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -203,9 +266,17 @@ document.getElementById('expenseForm').addEventListener('submit', function(event
         } else {
             alert("Error adding expenses. Please try again.");
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("An error occurred. Please try again.");
     });
 });
 
+addItemBtn.addEventListener('click', () => {
+    extractedItemsDiv.style.display = 'block'; // Show the "Extracted Items" section
+    addItemToAccordion({}, nextItemIndex);
+})
 </script>
 
 {% endblock %}
