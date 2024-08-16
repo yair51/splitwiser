@@ -259,6 +259,9 @@ def calculate_balances(group):
                 print(f"Warning: Participant {expense.paid_by_id} not found in group. Skipping.")
         else:
             balances[expense.paid_by_id] += expense.amount
+    for member_id in balances:
+        if -0.001 < balances[member_id] < 0.001:
+            balances[member_id] = 0 
     return balances
 
 
