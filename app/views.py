@@ -239,7 +239,7 @@ def calculate_balances(group):
         num_participants = len(expense.participants)
         # Check for zero participants (shouldn't happen, but it's a good safety measure)
         if num_participants == 0:
-            print(f"Expense {expense.id} has no participants. Skipping.")  
+            # print(f"Expense {expense.id} has no participants. Skipping.")  
             continue  # Skip this expense
         
         share_per_participant = expense.amount / num_participants

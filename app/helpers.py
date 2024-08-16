@@ -1,7 +1,9 @@
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
-from . import app
+from . import app, db
 from flask import render_template, current_app, flash
+from flask_login import current_user
+from app.models import Invitation
 import json
 from openai import OpenAI
 import pytesseract
@@ -38,6 +40,19 @@ def send_email(subject, recipients, template, **kwargs):
     except Exception as e:
         print(f"Failed {e}")
         app.logger.error("Error sending email: %s", e)
+
+
+def process_invitation(token):
+    """Processes an invitation token and adds the user to the group. Returns a group_id"""
+    invitation = Invitation.query.filter_by(token=token).first()
+    if invitation:
+        group = invitation.group
+        if current_user not in group.members:
+            group.members.append(current_user)
+            # db.session.delete(invitation) 
+            db.session.commit()
+            flash(f'You have successfully joined {group.name}!', 'success')
+            return invitation.group_id
 
     
 def extract_data_from_receipt(image_data, language="eng", prompt_language="English"):

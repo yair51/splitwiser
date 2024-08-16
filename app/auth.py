@@ -1,12 +1,11 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session, abort, current_app
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from .models import User, Invitation
 from . import db
-from app.helpers import send_email
+from app.helpers import send_email, process_invitation
 from app import login_manager
 from itsdangerous import URLSafeTimedSerializer  # For generating and verifying tokens
-from datetime import datetime
 
 
 auth = Blueprint('auth', __name__)
@@ -25,6 +24,12 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user, remember=True)
+
+            # Process invitation if token is present in session
+            invitation_token = session.pop('invitation_token', None)
+            if invitation_token:
+                group_id = process_invitation(invitation_token)
+                return redirect(url_for('views.group_details', group_id=group_id))
             return redirect(url_for('views.dashboard'))
         else:
             flash('Invalid email or password', 'danger')
@@ -46,24 +51,34 @@ def register():
         last_name = request.form['last_name']
         password = request.form['password']
         if User.query.filter_by(email=email).first():
-            flash('Email already exists', 'danger')
+            flash('Email already exists.', 'danger')
+            return redirect(url_for('auth.register'))  # Redirect back to registration page
         else:
             new_user = User(email=email, first_name=first_name, last_name=last_name, password=generate_password_hash(password, method='pbkdf2:sha256'))
             db.session.add(new_user)
             db.session.commit()
             # Check for invitation token in the session
-        invitation_token = session.pop('invitation_token', None)  
+        # Process invitation if token is present in session
+        invitation_token = session.pop('invitation_token', None)
         if invitation_token:
-            invitation = Invitation.query.filter_by(token=invitation_token).first()
-            if invitation:
-                # If found an invitation, log in user and add them to the group
-                login_user(new_user, remember=True)
-                group = invitation.group
-                group.members.append(new_user)
-                db.session.delete(invitation)  # Delete the used invitation
-                db.session.commit()
-                flash(f'Account created and you have been added to {group.name}!', 'success')
-                return redirect(url_for('views.group_details', group_id=group.id))
+            login_user(new_user, remember=True)
+            group_id = process_invitation(invitation_token)
+            # TODO - Redirect user to group page
+            return redirect(url_for('views.group_details', group_id=group_id))
+        # invitation_token = session.pop('invitation_token', None)  
+        # if invitation_token:
+        #     invitation = Invitation.query.filter_by(token=invitation_token).first()
+        #     if invitation:
+        #         # If found an invitation, log in user and add them to the group
+        #         login_user(new_user, remember=True)
+        #         group = invitation.group
+        #         print("group", group)
+        #         print("group members", group.members)
+        #         group.members.append(new_user)
+        #         db.session.delete(invitation)  # Delete the used invitation
+        #         db.session.commit()
+        #         flash(f'Account created and you have been added to {group.name}!', 'success')
+        #         return redirect(url_for('views.group_details', group_id=group.id))
         # If no token, or invalid token, redirect to dashboard
         else:
             login_user(new_user, remember=True)
