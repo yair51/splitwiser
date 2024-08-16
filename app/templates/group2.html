@@ -18,17 +18,6 @@
     <div class="col-12">
       <h1>{{ group.name }}</h1>
       <p class="text-muted">{{ group.description }}</p>
-      {% for settlement in settlements %}
-        {% if settlement[2] == current_user.id %}
-          <div class="alert alert-success" role="alert">
-            You owe {{ settlement[1] }} ${{ settlement[4]|round(2) }}
-          </div>
-        {% elif settlement[0] == current_user.id %}
-          <div class="alert alert-danger" role="alert">
-            {{ settlement[3] }} owes you ${{ settlement[4]|round(2) }}
-          </div>
-        {% endif %}
-    {% endfor %}
       <a href="{{ url_for('views.add_expense', group_id=group.id) }}" 
          class="btn btn-primary btn-lg fixed-bottom-right"> 
         <i class="fas fa-plus"></i>  Add Expense
@@ -37,7 +26,27 @@
          class="btn btn-lg btn-primary fixed-bottom-right"> 
         <i class="fas fa-envelope"></i>  Invite to Group
       </a>
-      <button type="button" class="btn btn-lg btn-danger fixed-bottom-right"onclick="leaveGroup({{ group.id }})">Leave Group</button>
+      <button type="button" class="btn btn-lg btn-danger fixed-bottom-right" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
+        <i class="fas fa-sign-out-alt"></i>  Leave Group
+    </button>
+    
+    <div class="modal fade" id="leaveGroupModal" tabindex="-1" aria-labelledby="leaveGroupModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content"> 
+          <div class="modal-header">
+            <h5 class="modal-title" id="leaveGroupModalLabel">Confirm Leave Group</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to leave this group?
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button> 
+            <button type="button" class="btn btn-danger" onclick="leaveGroup({{ group.id }})" data-bs-dismiss="modal">Leave Group</button>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -51,6 +60,17 @@
                 <div>
                     <h5 class="card-title">{{ member.first_name }} {{ member.last_name }}</h5>
                     <p class="card-text">Balance: ${{ balances[member.id] | round(2, 'common') }}</p>
+                    {% for settlement in settlements %}
+                      {% if settlement[2] == member.id %}
+                        <h6 class="card-text">
+                          Owes {{ settlement[1] }} ${{ settlement[4]|round(2) }}
+                        </h6>
+                      {% elif settlement[0] == member.id %}
+                        <h6 class="card-text">
+                          Owed ${{ settlement[4]|round(2) }} from {{ settlement[3] }} 
+                        </h6>
+                      {% endif %}
+                    {% endfor %}
                 </div>
                 {% if balances[member.id] > 0 %}
                     <span class="badge bg-success">Owed</span>
