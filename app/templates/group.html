@@ -22,11 +22,46 @@
          class="btn btn-primary btn-lg my-1"> 
         <i class="fas fa-plus"></i> Add Expense
       </a>
-      <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" 
+      <button type="button" class="btn btn-lg btn-green my-1" data-bs-toggle="modal" data-bs-target="#inviteMembersModal">
+        <i class="fas fa-envelope"></i> Invite to Group
+    </button>
+    <div class="modal fade" id="inviteMembersModal" tabindex="-1" aria-labelledby="inviteMembersModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="inviteMembersModalLabel">Invite Members to {{ group.name }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+              <div class="toast-body">
+                Invitation link copied to clipboard!
+              </div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div id="invitation-link-container" style="display: none;"> 
+              <p>Share this link to invite others:</p>
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" id="invitation-link" readonly>
+                <button class="btn btn-outline-secondary" type="button" id="copy-link-btn">
+                  <i class="fas fa-copy"></i> Copy
+                </button>
+              </div>
+            </div>
+            <div id="generating-link-message" class="text-center">
+              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating link...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      <!-- <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" 
          class="btn btn-lg btn-green my-1"> 
         <i class="fas fa-envelope"></i> Invite to Group
-      </a>
-      <button type="button" class="btn btn-lg btn-danger fixed-bottom-right" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
+      </a> -->
+      <button type="button" class="btn btn-lg btn-danger my-1 fixed-bottom-right" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
         <i class="fas fa-sign-out-alt"></i>  Leave Group
     </button>
     
@@ -150,11 +185,27 @@
                           <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="{{ expense.amount }}" step="0.01" min="0.01" required>
                         </div>
                         <div class="mb-3">
-                          <label for="participants" class="form-label">Participants</label>
+                          <label for="paid_by" class="form-label">Paid By</label>
+                          <select class="form-select" id="paid_by" name="paid_by">
+                            {% for member in group.members %}
+                              <option value="{{ member.id }}" {% if member == expense.paid_by %}selected{% endif %}>
+                                {{ member.first_name }} {{ member.last_name }}
+                              </option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label">Participants</label>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAllParticipants-{{ expense.id }}" >
+                            <label class="form-check-label" for="selectAllParticipants-{{ expense.id }}">
+                              Select All
+                            </label>
+                          </div>
                           {% for member in group.members %}
                           <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="participants" value="{{ member.id }}" id="participant-{{ member.id }}" 
-                                   {% if member in expense.participants %}checked{% endif %}>
+                            <input class="form-check-input participant-checkbox" type="checkbox" name="participants" value="{{ member.id }}" id="participant-{{ member.id }}" 
+                                  {% if member in expense.participants %}checked{% endif %}>
                             <label class="form-check-label" for="participant-{{ member.id }}">
                               {{ member.first_name }} {{ member.last_name }}
                             </label>
@@ -240,8 +291,78 @@
       <button type="button" class="btn btn-secondary" onclick="settleUp()">Settle Up Now</button> 
     </div>
     {% endif %}
+
     <script>
-      const currentGroupId = {{ group.id }};
+
+
+// Hanldes inviting members to the group
+
+  let invitationToken = null; // Store the invitation token
+  const inviteMembersModal = document.getElementById('inviteMembersModal');
+  const invitationLinkContainer = document.getElementById('invitation-link-container');
+  const generatingLinkMessage = document.getElementById('generating-link-message');
+  const invitationLinkInput = document.getElementById('invitation-link');
+  const copyLinkBtn = document.getElementById('copy-link-btn');
+  const shareLinkBtn = document.getElementById('share-link-btn');
+  // Fetch the invitation token when the page loads (or after group creation)
+  fetch(`/generate_invitation_token/{{ group.id }}`)
+      .then(response => response.json())
+      .then(data => {
+          if (data.success && data.token) {
+              invitationToken = data.token;
+          } else {
+              console.error("Error fetching invitation token.");
+          }
+      });
+
+  // Event listener for when the modal is shown
+  inviteMembersModal.addEventListener('shown.bs.modal', () => {
+      if (invitationToken) {
+          const invitationLink = `{{ url_for('views.join_group', token='', _external=True) }}` + invitationToken;
+          invitationLinkInput.value = invitationLink;
+
+          generatingLinkMessage.style.display = 'none';
+          invitationLinkContainer.style.display = 'block';
+      } else {
+          // Handle the case where the token couldn't be fetched initially
+          // You might want to display an error message or retry fetching the token
+      }
+  });
+
+  // Event listener for the "Copy Link" button
+copyLinkBtn.addEventListener('click', () => {
+    invitationLinkInput.select();
+    document.execCommand('copy');
+      // Trigger the toast notification
+      const toastElList = [].slice.call(document.querySelectorAll('.toast'))
+    const toastList = toastElList.map(toastEl => new bootstrap.Toast(toastEl))
+    toastList.forEach(toast => toast.show()) 
+});
+
+// // Event listener for the "Share" button (you'll need to implement the actual sharing logic here)
+// shareLinkBtn.addEventListener('click', () => {
+//     const shareData = {
+//         title: 'Invitation to {{ group.name }} on Splitwiser',
+//         text: 'You\'ve been invited to join {{ group.name }} on Splitwiser!',
+//         url: invitationLinkInput.value
+//     };
+
+//     // Use the Web Share API or a similar method to trigger the native share sheet
+//     if (navigator.share) {
+//         navigator.share(shareData)
+//             .then(() => console.log('Shared successfully'))
+//             .catch(error => console.error('Error sharing:', error));
+//     } else   
+//  {
+//         // Fallback for browsers that don't support Web Share   
+//  API
+//         alert("Sharing not supported in this browser. Please copy the link and share it manually.");
+//     }
+// });
+
+    const currentGroupId = {{ group.id }};
+
+      // Function to settle up balances
       function settleUp() {
         fetch(`/api/group/${currentGroupId}/settle_up`, {
           method: 'POST'
@@ -261,6 +382,8 @@
           // Handle error appropriately
         });
       }
+
+      // Function to leave a group
       function leaveGroup(groupId) {
     fetch(`/api/leave_group/${groupId}`, {
       method: "POST",
@@ -273,5 +396,17 @@
         }
       });
   }
+  
+  // Add event listeners for "Select All" checkboxes in edit modals
+  document.querySelectorAll('.modal .form-check-input[id^="selectAllParticipants-"]').forEach(checkbox => {
+    checkbox.addEventListener('change', (event) => {
+      const modalBody = event.target.closest('.modal-body'); // Find the closest modal-body
+      const participantCheckboxes = modalBody.querySelectorAll('.participant-checkbox');
+      participantCheckboxes.forEach(checkbox => {
+        checkbox.checked = event.target.checked;
+      });
+    });
+  });
+
   </script>
 {% endblock %}

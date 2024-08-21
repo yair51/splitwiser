@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Splitwiser - Simplify Shared Expenses{% endblock %}
+{% block title %}WeSplit - Simplify Shared Expenses{% endblock %}
 
 {% block content %}
 
@@ -96,6 +96,7 @@ body {
 
 <section class="hero">
   <div class="container">
+    <img src="{{ url_for('static', filename='images/wesplit-logo.jpeg') }}" alt="WeSplit Logo" height="100">
     <h1>Split Expenses, Not Friendships</h1>
     <p class="lead">Effortless expense tracking for groups and roommates.</p>
     <a href="{{ url_for('auth.register') }}" class="btn btn-green btn-lg">Sign Up Free</a>
@@ -138,7 +139,7 @@ body {
 </section>
 
 <section class="container mt-0">
-  <h2 class="text-center mb-4">What Our Roomates Say</h2>
+  <h2 class="text-center mb-4">What Our Users Say</h2>
 
   <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
     <div class="carousel-inner">

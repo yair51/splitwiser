@@ -29,7 +29,9 @@ def login():
             invitation_token = session.pop('invitation_token', None)
             if invitation_token:
                 group_id = process_invitation(invitation_token)
-                return redirect(url_for('views.group_details', group_id=group_id))
+                if group_id:
+                    return redirect(url_for('views.group_details', group_id=group_id))
+            flash('Logged in successfully.', 'success')
             return redirect(url_for('views.dashboard'))
         else:
             flash('Invalid email or password', 'danger')
@@ -96,7 +98,7 @@ def forgot_password():
         # Send email 
         if user:
             token = generate_reset_token(user.id)
-            send_email('Splitwiser Password Reset', [email], 'email/reset_password.html', user=user, token=token)
+            send_email('WeSplit Password Reset', [email], 'email/reset_password.html', user=user, token=token)
             flash('A password reset link has been sent to your email.', 'info')
         else:
             flash('Email not found.', 'danger')

@@ -55,7 +55,7 @@ function displayExtractedItems(items) {
     extractedItemsDiv.style.display = 'block'; // Show the "Extracted Items" section
     // itemAccordion.innerHTML = ''; // Clear any existing items in the accordion
     items.forEach((item, index) => {
-        addItemToAccordion(item, index); // Add each extracted item to the accordion
+        addItemToAccordion(item, nextItemIndex); // Add each extracted item to the accordion
     });
 
     // updateRemoveButtonListeners(); // Update listeners after adding rows

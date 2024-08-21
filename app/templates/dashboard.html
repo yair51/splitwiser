@@ -7,34 +7,69 @@
   <div class="row mt-4">
     <div class="col-12">
       <h1 class="text-center">Welcome back, {{ current_user.first_name }}!</h1>
-      <p class="text-center text-muted">Here's a quick overview of your recent activity.</p>
+      <!-- <p class="text-center text-muted">Here's a quick overview of your recent activity.</p> -->
+    </div>
+  </div>
+  <section class="container mt-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body text-center">
+            <h3 class="card-title">Scan Your Receipts</h3>
+            <p class="card-text">Skip manual entry, just snap a photo and let WeSplit do the rest!</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quickAddGroupModal">
+              <i class="fas fa-camera"></i> Scan Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="modal fade" id="quickAddGroupModal" tabindex="-1" aria-labelledby="quickAddGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="quickAddGroupModalLabel">Select a Group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="list-group">
+              {% for group in current_user.groups %}
+                  <li class="list-group-item">
+                      <a href="#" class="select-group-link" data-group-id="{{ group.id }}">{{ group.name }}</a>
+                  </li>
+              {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="row mt-4">
     <div class="col-sm-6 mb-3 mb-sm-0">
-      <div class="card">
-        <div class="card-body text-center">
-          <h5 class="card-title">Add Expense</h5>
-          <p class="card-text">Quickly log a new expense.</p>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quickAddExpenseModal">
+    <div class="card h-100">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center h-100">
+        <h5 class="card-title">Add Expense</h5>
+        <p class="card-text">Quickly log a new expense.</p>
+        <button type="button" class="btn btn-green" data-bs-toggle="modal" data-bs-target="#quickAddExpenseModal">
             <i class="fas fa-plus"></i> Quick Add
-          </button>
+        </button>
         </div>
-      </div>
+    </div>
     </div>
     <div class="col-sm-6">
-      <div class="card">
-        <div class="card-body text-center">
-          <h5 class="card-title">Create Group</h5>
-          <p class="card-text">Start a new group with friends or roommates.</p>
-          <a href="{{ url_for('views.create_group') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Create Group</a>
+    <div class="card h-100">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center h-100">
+        <h5 class="card-title">Create Group</h5>
+        <p class="card-text">Start a new group with friends or roommates.</p>
+        <a href="{{ url_for('views.create_group') }}" class="btn btn-orange"><i class="fas fa-plus"></i> Create Group</a>
         </div>
-      </div>
     </div>
-  </div>
+    </div>
+</div>
+  <!-- </div> -->
 
-  {% if not unsettled_groups %}
+  <!-- {% if not unsettled_groups %}
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
@@ -46,7 +81,7 @@
       </div>
     </div>
   </div>
-  {% endif %}
+  {% endif %} -->
 
   <h2 class="mt-5">Your Groups</h2>
   <div class="row">
@@ -75,18 +110,18 @@
     {% endfor %}
   </div>
 
-  {% if show_insights %}
+  <!-- {% if show_insights %}
   <h2 class="mt-5">Insights</h2>
   </div>
   {% endif %}
 
   {% if not current_user.is_premium %}
   <section class="container mt-5 text-center">
-    <h3>Unlock More with Splitwiser Premium</h3>
+    <h3>Unlock More with WeSplit Premium</h3>
     <p>Upgrade to access advanced features like receipt scanning, smart categorization, and personalized insights.</p>
     <a href="#" class="btn btn-warning btn-lg"><i class="fa-solid fa-money-bill"></i> Upgrade Now</a>
   </section>
-  {% endif %}
+  {% endif %} -->
 
   
   <div class="modal fade" id="quickAddExpenseModal" tabindex="-1" aria-labelledby="quickAddExpenseModalLabel" aria-hidden="true">
@@ -189,10 +224,11 @@ function populateParticipantCheckboxes() {
         data.members.forEach(member => {
           let checkboxHtml = `
             <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="participants[]" value="${member.id}" id="participant-${member.id}">
-                <label class="form-check-label" for="participant-${member.id}">
-                    ${member.first_name} ${member.last_name}
-                </label>
+              <input class="form-check-input" type="checkbox" name="participants[]" value="${member.id}" id="participant-${member.id}"
+                    ${member.id == {{ current_user.id }} ? 'checked' : ''}>
+              <label class="form-check-label" for="participant-${member.id}">
+                ${member.first_name} ${member.last_name}
+              </label>
             </div>
           `;
           quickAddParticipantCheckboxes.innerHTML += checkboxHtml;
@@ -231,10 +267,6 @@ function populateParticipantCheckboxes() {
 const quickAddGroupSelect = document.getElementById('quickAddGroup');
 quickAddGroupSelect.addEventListener('change', populateParticipantCheckboxes);
 
-// ... (Rest of your JavaScript code)
-
-
-  
   // "Select All" checkbox functionality
   const quickAddSelectAll = document.getElementById('quickAddSelectAll');
   quickAddSelectAll.addEventListener('change', () => {
@@ -243,8 +275,15 @@ quickAddGroupSelect.addEventListener('change', populateParticipantCheckboxes);
       checkbox.checked = quickAddSelectAll.checked;
     });
   });
+
+  // Event listeners for group selection links in the modal
+document.querySelectorAll('.select-group-link').forEach(link => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault(); 
+        const groupId = link.dataset.groupId;
+        window.location.href = `/group/${groupId}/add_expense`; // Redirect to add_expense with group_id
+    });
+});
   
   </script>
-  
-  {% endblock %}
-  
+{% endblock %}

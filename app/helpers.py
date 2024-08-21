@@ -1,7 +1,7 @@
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from . import app, db
-from flask import render_template, current_app, flash
+from flask import render_template, current_app, flash, redirect, url_for
 from flask_login import current_user
 from app.models import Invitation
 import json
@@ -43,9 +43,10 @@ def send_email(subject, recipients, template, **kwargs):
 
 
 def process_invitation(token):
-    """Processes an invitation token and adds the user to the group. Returns a group_id"""
+    """Processes an invitation token and adds the user to the group. Returns a group_id if user is added to the group."""
     invitation = Invitation.query.filter_by(token=token).first()
     if invitation:
+        print("group", invitation.group)
         group = invitation.group
         if current_user not in group.members:
             group.members.append(current_user)
@@ -53,6 +54,8 @@ def process_invitation(token):
             db.session.commit()
             flash(f'You have successfully joined {group.name}!', 'success')
             return invitation.group_id
+        else:
+            return None
 
     
 def extract_data_from_receipt(image_data, language="eng", prompt_language="English"):

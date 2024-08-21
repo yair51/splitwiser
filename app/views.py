@@ -4,13 +4,11 @@ from werkzeug.security import generate_password_hash
 from flask_mail import Message
 from .models import Group, Expense, Invitation, User
 from app.helpers import send_email, extract_data_from_receipt
-from . import db, mail
+from . import db
 import datetime
 import secrets
-from werkzeug.utils import secure_filename
 import io
-from PIL import Image, ExifTags, ImageEnhance, ImageFilter
-
+from PIL import Image, ExifTags
 import io
 import pillow_heif
 import json
@@ -20,11 +18,13 @@ views = Blueprint('views', __name__)
 
 @views.route('/')
 def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('views.dashboard'))
     # Sample testimonials data (replace with your actual data)
     testimonials = [
-        { 'quote': "Splitwiser has made splitting bills with my roommates so much easier! No more arguments or confusion.", 'author': "Sarah M." },
+        { 'quote': "WeSplit has made splitting bills with my roommates so much easier! No more arguments or confusion.", 'author': "Sarah M." },
         { 'quote': "The receipt scanning feature is a game-changer! I love how it automatically adds expenses for me.", 'author': "David L." },
-        { 'quote': "Splitwiser has saved me so much time and stress. I highly recommend it to anyone sharing expenses.", 'author': "Emily K." }
+        { 'quote': "WeSplit has saved me so much time and stress. I highly recommend it to anyone sharing expenses.", 'author': "Emily K." }
     ]
     return render_template('index.html', testimonials=testimonials) 
 
@@ -78,7 +78,7 @@ def contact():
             return render_template('contact.html')
 
         # Send email to your support address
-        msg = Message(f'Splitwiser Contact Form - {subject}', 
+        msg = Message(f'WeSplit Contact Form - {subject}', 
                       sender='yairgritzman@gmail.com', 
                       recipients=[current_app.config['MAIL_DEFAULT_SENDER']])  # Use your support email here
         msg.html = f"From: {name} <{email}>\n\n{message}"
@@ -276,7 +276,7 @@ def invite_to_group(group_id):
         db.session.commit()
 
         send_email(
-        'Splitwiser Group Invitation', 
+        'WeSplit Group Invitation', 
         [email], 
         'email/invitation.html', 
         group=group, 
@@ -724,15 +724,33 @@ def get_group_members(group_id):
 def generate_invitation_token(group_id):
     group = Group.query.get_or_404(group_id)
     if current_user not in group.members:
-        abort(403)  # Forbidden access
+        abort(403) 
 
-    token = secrets.token_hex(16)  # Generate a unique token
+    # Check if an invitation already exists for this group
+    invitation = Invitation.query.filter_by(group_id=group_id, email='Invitation_link').first()
+    if invitation:
+        token = invitation.token
+    else:
+        token = secrets.token_hex(16)
+        invitation = Invitation(email='Invitation_link', group_id=group_id, token=token)
+        db.session.add(invitation)
+        db.session.commit()
 
-    invitation = Invitation(email='Invitation_link', group_id=group_id, token=token)  
-    db.session.add(invitation)
-    db.session.commit()
+    return jsonify({"success": True, "token": token})
+# @views.route('/generate_invitation_token/<int:group_id>', methods=['GET'])
+# @login_required
+# def generate_invitation_token(group_id):
+#     group = Group.query.get_or_404(group_id)
+#     if current_user not in group.members:
+#         abort(403)  # Forbidden access
 
-    # Construct the full invitation link
-    invitation_link = url_for('views.join_group', token=token, _external=True)
+#     token = secrets.token_hex(16)  # Generate a unique token
 
-    return jsonify({'invitation_link': invitation_link})
+#     invitation = Invitation(email='Invitation_link', group_id=group_id, token=token)  
+#     db.session.add(invitation)
+#     db.session.commit()
+
+#     # Construct the full invitation link
+#     invitation_link = url_for('views.join_group', token=token, _external=True)
+
+#     return jsonify({'invitation_link': invitation_link})
