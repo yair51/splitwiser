@@ -79,7 +79,7 @@ def extract_data_from_receipt(image_data, language="eng", prompt_language="Engli
             f"If an item name appears to be misspelled and you are confident about the correction, correct the spelling."
             f"Ensure that you capture the item name and price accurately:\n\n"
             f"{text}\n\n"
-            "Return the result as a JSON object with the following format:\n"
+            "Return ONLY the JSON object with the following format, even if you are uncertain about the results. DO NOT include any additional text or explanations:\n"
             '{"items": [{"name": "item_name", "price": item_price}, ...]}\n'
             "Example:\n"
             'Receipt Text: "Milk 3.50, Bread 2.30, Tomatoes 5.90"\n'

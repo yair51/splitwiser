@@ -57,10 +57,10 @@
         </div>
       </div>
     </div>
-      <!-- <a href="{{ url_for('views.invite_to_group', group_id=group.id) }}" 
-         class="btn btn-lg btn-green my-1"> 
-        <i class="fas fa-envelope"></i> Invite to Group
-      </a> -->
+    {% if balances[current_user.id] < 0 %}
+    <button type="button" class="btn btn-lg btn-secondary my-1 fixed-bottom-right" onclick="settleUp()">
+      <i class="fas fa-money-bill"></i> Settle Up Now</button> 
+  {% endif %}
       <button type="button" class="btn btn-lg btn-danger my-1 fixed-bottom-right" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
         <i class="fas fa-sign-out-alt"></i>  Leave Group
     </button>
@@ -286,12 +286,6 @@
     }
     
     </script> -->
-    {% if balances[current_user.id] < 0 %}
-    <div class="text-center" style="margin: 20px auto; width: fit-content;"> 
-      <button type="button" class="btn btn-secondary" onclick="settleUp()">Settle Up Now</button> 
-    </div>
-    {% endif %}
-
     <script>
 
 
