@@ -9,8 +9,9 @@ from openai import OpenAI
 import pytesseract
 import os
 from langdetect import detect
-from PIL import ImageEnhance, ImageFilter
-
+from PIL import ImageEnhance, ImageFilter, Image
+import cv2 as cv
+import numpy as np
 
 # Send Email Function
 def send_email(subject, recipients, template, **kwargs):
@@ -57,21 +58,45 @@ def process_invitation(token):
         else:
             return None
 
+
+# Preprocess image for OCR
+def preprocess_image(img):
+    # Convert PIL Image to a NumPy array
+    open_cv_image = np.array(img)
+
+    # Apply GaussianBlur to reduce noise
+    blur = cv.GaussianBlur(open_cv_image, (5, 5), 0)
+
+    # Apply Canny edge detection
+    edged_no_thresh = cv.Canny(blur, 100, 200)
+
+    # Apply dilation operations
+    kernel = np.ones((3,3),np.uint8) # Adjust kernel size if needed
+    dilated_img = cv.dilate(edged_no_thresh, kernel, iterations = 1)
+
+    # Invert the colors of dialated image
+    inverted_img = cv.bitwise_not(dilated_img)
+
+    # Otsu thresholding
+    ret4,thresh = cv.threshold(inverted_img,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+    # Convert to RGB for display
+    rgb_img = cv.cvtColor(thresh, cv.COLOR_BGR2RGB)
+    # Convert to PIL Image
+    pil_img = Image.fromarray(rgb_img)
+    return pil_img
     
+
 def extract_data_from_receipt(image_data, language="eng", prompt_language="English"):
     """Extract data from receipt image using OCR and LLM."""
 
     text = ""
-    # Image Preprocessing
-    image_data = image_data.convert('L')  # Convert to grayscale (optional, but often improves OCR accuracy)
-    # Enhance contrast
-    enhancer = ImageEnhance.Contrast(image_data)
-    image_data = enhancer.enhance(1.5)  # Adjust the factor as needed
-    image_data = image_data.filter(ImageFilter.SHARPEN) # Sharpen the image
+
+    preprocessed_img = preprocess_image(image_data)
 
     # Extract text using Tesseract OCR with the detected language
     try:
-        text = pytesseract.image_to_string(image_data, lang=language)
+        config = '--oem 1 --psm 4'  # Set OEM to 1 (Neural nets LSTM engine only)
+        text = pytesseract.image_to_string(preprocessed_img, lang=language, config=config)
         print("OCR text", text)
     except pytesseract.TesseractError as e:
         print("Error with OCR extraction: ", e)
