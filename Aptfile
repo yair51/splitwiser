@@ -3,3 +3,7 @@ tesseract-ocr-eng
 tesseract-ocr-heb
 tesseract-ocr-nor
 *libarchive13*
+libsm6
+libxrender1
+libfontconfig1
+libice6
